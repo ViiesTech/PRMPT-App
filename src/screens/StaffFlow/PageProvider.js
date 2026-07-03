@@ -10,6 +10,7 @@ import {
   Modal,
   TextInput,
   Alert,
+  KeyboardAvoidingView,
 } from 'react-native';
 import {
   responsiveFontSize,
@@ -299,192 +300,203 @@ const PageProvider = ({ navigation }) => {
         onRequestClose={closeModal}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            {/* Close Cross Button on Top Right */}
-            <TouchableOpacity
-              onPress={closeModal}
-              style={styles.closeCrossButton}
-              activeOpacity={0.7}
-            >
-              <Feather name="x" size={22} color="#94A3B8" />
-            </TouchableOpacity>
-
-            {/* Modal Header */}
-            <View style={styles.modalHeader}>
-              <View
-                style={[
-                  styles.modalHeaderIconBlock,
-                  { backgroundColor: activeCategory?.bg },
-                ]}
-              >
-                <FontAwesome5
-                  name={activeCategory?.icon}
-                  size={20}
-                  color={activeCategory?.color}
-                />
-              </View>
-              <View style={styles.modalHeaderTitleBlock}>
-                <Text
-                  style={[
-                    styles.modalCategoryText,
-                    { color: activeCategory?.color },
-                  ]}
-                >
-                  {activeCategory?.label}
-                </Text>
-                <Text style={styles.modalItemTitleText}>
-                  {selectedItem?.title}
-                </Text>
-              </View>
-            </View>
-
-            {/* Form Fields */}
-            {/* Patient Name */}
-            <Text style={styles.inputLabel}>
-              Patient Name<Text style={styles.requiredAsterisk}>*</Text>
-            </Text>
-            <TextInput
-              style={styles.textInput}
-              placeholder="Full name..."
-              placeholderTextColor="#A0AEC0"
-              value={patientName}
-              onChangeText={setPatientName}
-            />
-
-            {/* Provider and Room in a Row */}
-            <View style={styles.rowContainer}>
-              <View style={styles.halfWidth}>
-                <Text style={styles.inputLabel}>
-                  Provider<Text style={styles.requiredAsterisk}>*</Text>
-                </Text>
-                <Dropdown
-                  style={styles.dropdown}
-                  placeholderStyle={styles.placeholderStyle}
-                  selectedTextStyle={styles.selectedTextStyle}
-                  data={providerData}
-                  maxHeight={200}
-                  labelField="label"
-                  valueField="value"
-                  placeholder="Select provider..."
-                  value={selectedProvider}
-                  onChange={item => setSelectedProvider(item.value)}
-                  containerStyle={styles.dropdownContainer}
-                  activeColor="#F0FDFA"
-                />
-              </View>
-              <View style={styles.halfWidth}>
-                <Text style={styles.inputLabel}>
-                  Room<Text style={styles.requiredAsterisk}>*</Text>
-                </Text>
-                <Dropdown
-                  style={styles.dropdown}
-                  placeholderStyle={styles.placeholderStyle}
-                  selectedTextStyle={styles.selectedTextStyle}
-                  data={roomData}
-                  maxHeight={200}
-                  labelField="label"
-                  valueField="value"
-                  placeholder="Select room..."
-                  value={selectedRoom}
-                  onChange={item => setSelectedRoom(item.value)}
-                  containerStyle={styles.dropdownContainer}
-                  activeColor="#F0FDFA"
-                />
-              </View>
-            </View>
-
-            {/* Additional Notes */}
-            <Text style={styles.inputLabel}>
-              Additional Notes<Text style={styles.requiredAsterisk}>*</Text>
-            </Text>
-            <TextInput
-              style={[styles.textInput, styles.notesInput]}
-              placeholder="Any relevant notes..."
-              placeholderTextColor="#A0AEC0"
-              multiline={true}
-              numberOfLines={4}
-              value={additionalNotes}
-              onChangeText={setAdditionalNotes}
-            />
-
-            {/* Checkboxes Row */}
-            <View style={styles.checkboxRow}>
-              <TouchableOpacity
-                activeOpacity={0.8}
-                onPress={() => setNewToOffice(!newToOffice)}
-                style={[
-                  styles.checkboxCard,
-                  { marginRight: responsiveWidth(3) },
-                ]}
-              >
-                <View
-                  style={[
-                    styles.checkbox,
-                    newToOffice && styles.checkboxChecked,
-                  ]}
-                >
-                  {newToOffice && (
-                    <Feather name="check" size={11} color={AppColors.white} />
-                  )}
-                </View>
-                <View style={styles.checkboxTextContainer}>
-                  <Text style={styles.checkboxLabel} numberOfLines={1}>
-                    New to Office
-                  </Text>
-                  <Text style={styles.checkboxSubtext} numberOfLines={1}>
-                    First time patient
-                  </Text>
-                </View>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                activeOpacity={0.8}
-                onPress={() => setNewToProvider(!newToProvider)}
-                style={styles.checkboxCard}
-              >
-                <View
-                  style={[
-                    styles.checkbox,
-                    newToProvider && styles.checkboxChecked,
-                  ]}
-                >
-                  {newToProvider && (
-                    <Feather name="check" size={11} color={AppColors.white} />
-                  )}
-                </View>
-
-                <View style={styles.checkboxTextContainer}>
-                  <Text style={styles.checkboxLabel} numberOfLines={1}>
-                    New to Provider
-                  </Text>
-                  <Text style={styles.checkboxSubtext} numberOfLines={1}>
-                    First visit this provider
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            </View>
-
-            {/* Action Buttons Row */}
-            <View style={styles.modalActionRow}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={{ width: '100%', alignItems: 'center', justifyContent: 'center' }}
+          >
+            <View style={styles.modalCard}>
+              {/* Close Cross Button on Top Right */}
               <TouchableOpacity
                 onPress={closeModal}
-                style={styles.cancelButton}
+                style={styles.closeCrossButton}
                 activeOpacity={0.7}
               >
-                <Text style={styles.cancelButtonText}>Cancel</Text>
+                <Feather name="x" size={22} color="#94A3B8" />
               </TouchableOpacity>
 
-              <AppButton
-                title="Add to Queue"
-                onPress={handleAddToQueue}
-                gradient={true}
-                variant="primary"
-                showArrow={true}
-                fontSize={1.5}
-                style={styles.confirmButton}
-              />
+              <ScrollView
+                showsVerticalScrollIndicator={false}
+                style={{ maxHeight: responsiveHeight(75), width: '100%' }}
+                contentContainerStyle={{ flexGrow: 1 }}
+              >
+                {/* Modal Header */}
+                <View style={styles.modalHeader}>
+                  <View
+                    style={[
+                      styles.modalHeaderIconBlock,
+                      { backgroundColor: activeCategory?.bg },
+                    ]}
+                  >
+                    <FontAwesome5
+                      name={activeCategory?.icon}
+                      size={20}
+                      color={activeCategory?.color}
+                    />
+                  </View>
+                  <View style={styles.modalHeaderTitleBlock}>
+                    <Text
+                      style={[
+                        styles.modalCategoryText,
+                        { color: activeCategory?.color },
+                      ]}
+                    >
+                      {activeCategory?.label}
+                    </Text>
+                    <Text style={styles.modalItemTitleText}>
+                      {selectedItem?.title}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Form Fields */}
+                {/* Patient Name */}
+                <Text style={styles.inputLabel}>
+                  Patient Name<Text style={styles.requiredAsterisk}>*</Text>
+                </Text>
+                <TextInput
+                  style={styles.textInput}
+                  placeholder="Full name..."
+                  placeholderTextColor="#A0AEC0"
+                  value={patientName}
+                  onChangeText={setPatientName}
+                />
+
+                {/* Provider and Room in a Row */}
+                <View style={styles.rowContainer}>
+                  <View style={styles.halfWidth}>
+                    <Text style={styles.inputLabel}>
+                      Provider<Text style={styles.requiredAsterisk}>*</Text>
+                    </Text>
+                    <Dropdown
+                      style={styles.dropdown}
+                      placeholderStyle={styles.placeholderStyle}
+                      selectedTextStyle={styles.selectedTextStyle}
+                      data={providerData}
+                      maxHeight={200}
+                      labelField="label"
+                      valueField="value"
+                      placeholder="Select provider..."
+                      value={selectedProvider}
+                      onChange={item => setSelectedProvider(item.value)}
+                      containerStyle={styles.dropdownContainer}
+                      activeColor="#F0FDFA"
+                    />
+                  </View>
+                  <View style={styles.halfWidth}>
+                    <Text style={styles.inputLabel}>
+                      Room<Text style={styles.requiredAsterisk}>*</Text>
+                    </Text>
+                    <Dropdown
+                      style={styles.dropdown}
+                      placeholderStyle={styles.placeholderStyle}
+                      selectedTextStyle={styles.selectedTextStyle}
+                      data={roomData}
+                      maxHeight={200}
+                      labelField="label"
+                      valueField="value"
+                      placeholder="Select room..."
+                      value={selectedRoom}
+                      onChange={item => setSelectedRoom(item.value)}
+                      containerStyle={styles.dropdownContainer}
+                      activeColor="#F0FDFA"
+                    />
+                  </View>
+                </View>
+
+                {/* Additional Notes */}
+                <Text style={styles.inputLabel}>
+                  Additional Notes<Text style={styles.requiredAsterisk}>*</Text>
+                </Text>
+                <TextInput
+                  style={[styles.textInput, styles.notesInput]}
+                  placeholder="Any relevant notes..."
+                  placeholderTextColor="#A0AEC0"
+                  multiline={true}
+                  numberOfLines={4}
+                  value={additionalNotes}
+                  onChangeText={setAdditionalNotes}
+                />
+
+                {/* Checkboxes Row */}
+                <View style={styles.checkboxRow}>
+                  <TouchableOpacity
+                    activeOpacity={0.8}
+                    onPress={() => setNewToOffice(!newToOffice)}
+                    style={[
+                      styles.checkboxCard,
+                      { marginRight: responsiveWidth(3) },
+                    ]}
+                  >
+                    <View
+                      style={[
+                        styles.checkbox,
+                        newToOffice && styles.checkboxChecked,
+                      ]}
+                    >
+                      {newToOffice && (
+                        <Feather name="check" size={11} color={AppColors.white} />
+                      )}
+                    </View>
+                    <View style={styles.checkboxTextContainer}>
+                      <Text style={styles.checkboxLabel} numberOfLines={1}>
+                        New to Office
+                      </Text>
+                      <Text style={styles.checkboxSubtext} numberOfLines={1}>
+                        First time patient
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    activeOpacity={0.8}
+                    onPress={() => setNewToProvider(!newToProvider)}
+                    style={styles.checkboxCard}
+                  >
+                    <View
+                      style={[
+                        styles.checkbox,
+                        newToProvider && styles.checkboxChecked,
+                      ]}
+                    >
+                      {newToProvider && (
+                        <Feather name="check" size={11} color={AppColors.white} />
+                      )}
+                    </View>
+
+                    <View style={styles.checkboxTextContainer}>
+                      <Text style={styles.checkboxLabel} numberOfLines={1}>
+                        New to Provider
+                      </Text>
+                      <Text style={styles.checkboxSubtext} numberOfLines={1}>
+                        First visit this provider
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Action Buttons Row */}
+                <View style={styles.modalActionRow}>
+                  <TouchableOpacity
+                    onPress={closeModal}
+                    style={styles.cancelButton}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.cancelButtonText}>Cancel</Text>
+                  </TouchableOpacity>
+
+                  <AppButton
+                    title="Add to Queue"
+                    onPress={handleAddToQueue}
+                    gradient={true}
+                    variant="primary"
+                    showArrow={true}
+                    fontSize={1.5}
+                    style={styles.confirmButton}
+                  />
+                </View>
+              </ScrollView>
             </View>
-          </View>
+          </KeyboardAvoidingView>
         </View>
       </Modal>
     </View>

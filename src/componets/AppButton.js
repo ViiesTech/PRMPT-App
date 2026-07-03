@@ -1,13 +1,13 @@
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
-import AntDesign from 'react-native-vector-icons/AntDesign';
 import {
   responsiveFontSize,
   responsiveHeight,
   responsiveWidth,
 } from '../utils/Responsive_Dimensions'; // Path apne hisab se adjust karlein
 import { AppColors } from '../utils/AppColors';
+import Feather from 'react-native-vector-icons/Feather';
 
 const AppButton = ({
   title,
@@ -27,12 +27,25 @@ const AppButton = ({
 
   // Render content logic inside the button
   const renderContent = () => (
-    <>
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        width: '100%',
+        height: '100%',
+        justifyContent: 'center',
+      }}
+    >
       <Text style={[styles.btnText(fontSize), textStyle]}>{title}</Text>
       {showArrow && (
-        <AntDesign name="arrowright" size={18} color={AppColors.white} />
+        <Feather
+          name="arrow-right"
+          size={26}
+          color="#FFFFFF"
+          style={styles.arrowIcon}
+        />
       )}
-    </>
+    </View>
   );
 
   return (
@@ -77,7 +90,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: responsiveWidth(6),
+    // paddingHorizontal: responsiveWidth(6),
   },
   solidFallback: {
     backgroundColor: '#0EA5A7', // Solid Primary Teal
@@ -97,6 +110,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: responsiveFontSize(2.5),
     fontWeight: '400',
+    marginRight: responsiveWidth(4),
   },
 });
 

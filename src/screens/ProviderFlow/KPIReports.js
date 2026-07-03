@@ -186,23 +186,23 @@ const KPIReports = ({ navigation }) => {
                   </Text>
                   <Text style={styles.docSpecialty}>{doc.specialty}</Text>
                 </View>
+              </View>
 
-                {/* Performance Stats Row */}
-                <View style={styles.docStatsRow}>
-                  <View style={styles.statCol}>
-                    <Text style={styles.statValue}>{doc.patients}</Text>
-                    <Text style={styles.statLabel}>PATIENTS</Text>
-                  </View>
-                  <View style={styles.vDivider} />
-                  <View style={styles.statCol}>
-                    <Text style={styles.statValue}>{doc.avgResponse}</Text>
-                    <Text style={styles.statLabel}>AVG RESPONSE</Text>
-                  </View>
-                  <View style={styles.vDivider} />
-                  <View style={styles.statCol}>
-                    <Text style={styles.statValue}>{doc.avgCompletion}</Text>
-                    <Text style={styles.statLabel}>AVG COMPLETION</Text>
-                  </View>
+              {/* Performance Stats Row */}
+              <View style={styles.docStatsRow}>
+                <View style={styles.statCol}>
+                  <Text style={styles.statValue}>{doc.patients}</Text>
+                  <Text style={styles.statLabel}>PATIENTS</Text>
+                </View>
+                <View style={styles.vDivider} />
+                <View style={styles.statCol}>
+                  <Text style={styles.statValue}>{doc.avgResponse}</Text>
+                  <Text style={styles.statLabel}>AVG RESPONSE</Text>
+                </View>
+                <View style={styles.vDivider} />
+                <View style={styles.statCol}>
+                  <Text style={styles.statValue}>{doc.avgCompletion}</Text>
+                  <Text style={styles.statLabel}>AVG COMPLETION</Text>
                 </View>
               </View>
 
@@ -376,7 +376,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#E2E8F0',
   },
   docInfoWrapper: {
-    flex: 1.1,
+    flex: 1,
     marginLeft: responsiveWidth(3),
   },
   docName: {
@@ -391,14 +391,15 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   docStatsRow: {
-    flex: 2,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'flex-end',
+    justifyContent: 'space-around',
+    marginTop: responsiveHeight(1.8),
+    width: '100%',
   },
   statCol: {
+    flex: 1,
     alignItems: 'center',
-    paddingHorizontal: responsiveWidth(1.2),
   },
   statValue: {
     fontSize: responsiveFontSize(1.8),

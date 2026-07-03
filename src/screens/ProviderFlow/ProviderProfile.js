@@ -169,9 +169,6 @@ const styles = StyleSheet.create({
     fontSize: responsiveFontSize(2.1),
     fontWeight: '700',
     color: '#1F2937',
-    textDecorationLine: 'underline',
-    textDecorationColor: '#0EA5E9',
-    textDecorationStyle: 'solid',
   },
   profileEmail: {
     fontSize: responsiveFontSize(1.5),
