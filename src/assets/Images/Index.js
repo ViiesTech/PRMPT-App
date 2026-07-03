@@ -1,0 +1,15 @@
+export const AppImages = {
+  logo: require('./logo.png'),
+  login: require('./login.png'),
+  emailVerification: require('./emailVerification.png'),
+  enterYourPassword: require('./enterYourPassword.png'),
+  forgetPassword: require('./forgetPassword.png'),
+  home: require('./home.png'),
+  queue: require('./queue.png'),
+  pageProvider: require('./pageProvider.png'),
+  messages: require('./messages.png'),
+  profile: require('./profile.png'),
+  notification: require('./notification.png'),
+  room: require('./room.png'),
+  time: require('./time.png'),
+};
