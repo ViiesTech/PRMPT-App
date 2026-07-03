@@ -18,12 +18,16 @@ import AppButton from '../../componets/AppButton';
 import Feather from 'react-native-vector-icons/Feather';
 import { AppColors } from '../../utils/AppColors';
 import LinearGradient from 'react-native-linear-gradient';
+import { useDispatch } from 'react-redux';
+import { setRole } from '../../redux/Slices';
 
 const RoleSelectionScreen = ({ navigation }) => {
+  const dispatch = useDispatch();
   const [selectedRole, setSelectedRole] = useState('provider'); // default to provider
 
   const handleContinue = () => {
-    navigation.navigate('Login', { role: selectedRole });
+    dispatch(setRole(selectedRole));
+    navigation.navigate('Login');
   };
 
   return (

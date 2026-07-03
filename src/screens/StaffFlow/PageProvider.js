@@ -20,6 +20,7 @@ import { Dropdown } from 'react-native-element-dropdown';
 import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
 import Feather from 'react-native-vector-icons/Feather';
 import AppButton from '../../componets/AppButton';
+import { AppColors } from '../../utils/AppColors';
 
 const categories = [
   {
@@ -281,7 +282,7 @@ const PageProvider = ({ navigation }) => {
                 <FontAwesome5
                   name="chevron-right"
                   size={11}
-                  color="#FFFFFF"
+                  color={AppColors.white}
                   style={styles.arrowIcon}
                 />
               </View>
@@ -423,7 +424,7 @@ const PageProvider = ({ navigation }) => {
                   ]}
                 >
                   {newToOffice && (
-                    <Feather name="check" size={11} color="#FFFFFF" />
+                    <Feather name="check" size={11} color={AppColors.white} />
                   )}
                 </View>
                 <View style={styles.checkboxTextContainer}>
@@ -448,9 +449,10 @@ const PageProvider = ({ navigation }) => {
                   ]}
                 >
                   {newToProvider && (
-                    <Feather name="check" size={11} color="#FFFFFF" />
+                    <Feather name="check" size={11} color={AppColors.white} />
                   )}
                 </View>
+
                 <View style={styles.checkboxTextContainer}>
                   <Text style={styles.checkboxLabel} numberOfLines={1}>
                     New to Provider

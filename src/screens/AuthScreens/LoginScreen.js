@@ -20,9 +20,11 @@ import {
 import Fontisto from 'react-native-vector-icons/Fontisto';
 import { AppImages } from '../../assets/Images/Index';
 import AppButton from '../../componets/AppButton';
+import { useSelector } from 'react-redux';
+import { selectRole } from '../../redux/Slices';
 
-const LoginScreen = ({ navigation, route }) => {
-  const role = route?.params?.role || 'provider';
+const LoginScreen = ({ navigation }) => {
+  const role = useSelector(selectRole);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
@@ -40,6 +42,7 @@ const LoginScreen = ({ navigation, route }) => {
     }
   };
 
+  console.log('ROLE:-', role);
   return (
     <View style={styles.container}>
       <StatusBar backgroundColor={AppColors.white} barStyle="dark-content" />

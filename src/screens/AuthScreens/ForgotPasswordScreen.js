@@ -21,12 +21,38 @@ import Fontisto from 'react-native-vector-icons/Fontisto';
 import Ionicons from 'react-native-vector-icons/Ionicons'; // Required for the Back Arrow
 import AppButton from '../../componets/AppButton'; // Ensure correct path spelling
 import { AppImages } from '../../assets/Images/Index';
+import { useForgotPasswordMutation } from '../../Services/Auth';
+import { showToast } from '../../utils/ShowToast';
 
 const ForgotPasswordScreen = ({ navigation }) => {
   const [email, setEmail] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [forgotPassword] = useForgotPasswordMutation();
 
-  const handleSendCode = () => {
+  const handleSendCode = async () => {
     navigation.navigate('EmailVerification');
+    // if (!email) {
+    //   showToast('Error', 'Please enter your email');
+    //   return;
+    // }
+    // let payload = {
+    //   type: 'forget',
+    //   email: email,
+    // };
+    // setLoading(true);
+    // let res = await forgotPassword(payload);
+    // setLoading(false);
+    // console.log('res in forgotPassword:-', res);
+    // if (res?.data?.status) {
+    //   showToast('Success', res?.data?.message);
+    //   navigation.navigate('EmailVerification', {
+    //     email: email,
+    //     type: 'forget',
+    //   });
+    // } else {
+    //   console.log('err in forgotPassword:-', res?.error?.data?.message);
+    //   showToast('Error', res?.error?.data?.message, 'error');
+    // }
   };
 
   return (

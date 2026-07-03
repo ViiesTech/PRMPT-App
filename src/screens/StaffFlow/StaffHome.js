@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   StatusBar,
   Platform,
+  ImageBackground,
 } from 'react-native';
 import { AppColors } from '../../utils/AppColors';
 import {
@@ -15,6 +16,7 @@ import {
   responsiveWidth,
 } from '../../utils/Responsive_Dimensions';
 import Feather from 'react-native-vector-icons/Feather';
+import { AppImages } from '../../assets/Images/Index';
 
 const roomsData = [
   {
@@ -65,12 +67,17 @@ const StaffHome = ({ navigation }) => {
         </View>
 
         {/* Dashboard Promo Card Banner */}
-        <View style={styles.dashboardBanner}>
+        <ImageBackground
+          source={AppImages.banner}
+          resizeMode="cover"
+          style={styles.dashboardBanner}
+          imageStyle={{ borderRadius: 20 }}
+        >
           <Text style={styles.bannerTitle}>Staff{'\n'}Dashboard</Text>
           <Text style={styles.bannerSubtitle}>
             Real-time overview of all operations
           </Text>
-        </View>
+        </ImageBackground>
 
         {/* Triple Summary Metrics Row */}
         <View style={styles.metricsRow}>
@@ -320,16 +327,17 @@ const styles = StyleSheet.create({
     backgroundColor: '#FF5A5A',
   },
   dashboardBanner: {
-    width: '100%',
+    width: responsiveWidth(92),
     backgroundColor: '#0C4F51',
     borderRadius: 20,
-    padding: responsiveWidth(5.5),
+    paddingHorizontal: responsiveWidth(5.5),
+    paddingVertical: responsiveHeight(3.5),
     marginBottom: responsiveHeight(2.5),
   },
   bannerTitle: {
     fontSize: responsiveFontSize(3.2),
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: AppColors.white,
     lineHeight: responsiveHeight(4.2),
   },
   bannerSubtitle: {

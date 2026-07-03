@@ -12,4 +12,5 @@ export const AppImages = {
   notification: require('./notification.png'),
   room: require('./room.png'),
   time: require('./time.png'),
+  banner: require('./banner.png'),
 };

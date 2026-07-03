@@ -19,14 +19,27 @@ import {
 } from '../../utils/Responsive_Dimensions';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import Fontisto from 'react-native-vector-icons/Fontisto';
-import AppButton from '../../componets/AppButton'; // Keeping your current folder structure path
+import AppButton from '../../componets/AppButton';
 import { AppImages } from '../../assets/Images/Index';
+import { showToast } from '../../utils/ShowToast';
 
 const SetPasswordScreen = ({ navigation }) => {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [secureNew, setSecureNew] = useState(true);
   const [secureConfirm, setSecureConfirm] = useState(true);
+
+  const handleContinue = () => {
+    if (!newPassword || !confirmPassword) {
+      showToast('Please enter your password');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      showToast('Passwords do not match');
+      return;
+    }
+    navigation.navigate('Login');
+  };
 
   return (
     <View style={styles.container}>
@@ -119,11 +132,11 @@ const SetPasswordScreen = ({ navigation }) => {
           {/* Bottom Styled Actions Component */}
           <View style={styles.btnWrapper}>
             <AppButton
-              title="Confirm New Password"
+              title="Continue"
               gradient={true}
               variant="primary"
               showArrow={true}
-              onPress={() => navigation.navigate('Login')}
+              onPress={handleContinue}
             />
           </View>
         </ScrollView>

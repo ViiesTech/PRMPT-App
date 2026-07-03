@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   StatusBar,
   Platform,
+  ImageBackground,
 } from 'react-native';
 import { AppColors } from '../../utils/AppColors';
 import {
@@ -15,6 +16,7 @@ import {
   responsiveWidth,
 } from '../../utils/Responsive_Dimensions';
 import Feather from 'react-native-vector-icons/Feather';
+import { AppImages } from '../../assets/Images/Index';
 
 const roomsData = [
   {
@@ -65,12 +67,17 @@ const ProviderHome = ({ navigation }) => {
         </View>
 
         {/* Dashboard Promo Card Banner */}
-        <View style={styles.dashboardBanner}>
+        <ImageBackground
+          source={AppImages.banner}
+          resizeMode="cover"
+          style={styles.dashboardBanner}
+          imageStyle={{ borderRadius: 20 }}
+        >
           <Text style={styles.bannerTitle}>Provider{'\n'}Dashboard</Text>
           <Text style={styles.bannerSubtitle}>
             Real-time overview of all operations
           </Text>
-        </View>
+        </ImageBackground>
 
         {/* Triple Summary Metrics Row */}
         <View style={styles.metricsRow}>
@@ -138,7 +145,7 @@ const ProviderHome = ({ navigation }) => {
                     <Feather
                       name="home"
                       size={11}
-                      color={isCurrentlySelected ? '#FFFFFF' : '#666666'}
+                      color={isCurrentlySelected ? AppColors.white : '#666666'}
                     />
                     <Text
                       style={
@@ -157,7 +164,9 @@ const ProviderHome = ({ navigation }) => {
                         style={[
                           styles.activePatientName,
                           {
-                            color: isCurrentlySelected ? '#FFFFFF' : '#1A202C',
+                            color: isCurrentlySelected
+                              ? AppColors.white
+                              : '#1A202C',
                           },
                         ]}
                         numberOfLines={1}
@@ -178,7 +187,9 @@ const ProviderHome = ({ navigation }) => {
                         style={[
                           styles.activeStatusTag,
                           {
-                            color: isCurrentlySelected ? '#FFFFFF' : '#A0AEC0',
+                            color: isCurrentlySelected
+                              ? AppColors.white
+                              : '#A0AEC0',
                           },
                         ]}
                       >
@@ -297,14 +308,14 @@ const styles = StyleSheet.create({
   profileName: {
     fontSize: responsiveFontSize(2.4),
     fontWeight: '700',
-    color: '#111111',
+    color: AppColors.black,
     marginTop: 2,
   },
   bellNotificationBtn: {
     width: 46,
     height: 46,
     borderRadius: 23,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: AppColors.white,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
@@ -320,16 +331,17 @@ const styles = StyleSheet.create({
     backgroundColor: '#FF5A5A',
   },
   dashboardBanner: {
-    width: '100%',
+    width: responsiveWidth(92),
     backgroundColor: '#0C4F51',
     borderRadius: 20,
-    padding: responsiveWidth(5.5),
+    paddingHorizontal: responsiveWidth(5.5),
+    paddingVertical: responsiveHeight(3.5),
     marginBottom: responsiveHeight(2.5),
   },
   bannerTitle: {
     fontSize: responsiveFontSize(3.2),
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: AppColors.white,
     lineHeight: responsiveHeight(4.2),
   },
   bannerSubtitle: {
@@ -369,11 +381,11 @@ const styles = StyleSheet.create({
   metricCounter: {
     fontSize: responsiveFontSize(2.4),
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: AppColors.white,
     marginTop: -2,
   },
   whiteSectionBlock: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: AppColors.white,
     borderRadius: 18,
     padding: responsiveWidth(4.5),
     marginBottom: responsiveHeight(2.5),
@@ -388,7 +400,7 @@ const styles = StyleSheet.create({
   blockHeadingTitle: {
     fontSize: responsiveFontSize(2.2),
     fontWeight: '700',
-    color: '#111111',
+    color: AppColors.black,
     marginBottom: responsiveHeight(2),
   },
   gridRoomsContainer: {
@@ -410,7 +422,7 @@ const styles = StyleSheet.create({
     borderColor: '#0C4F51',
   },
   roomBoxUnselected: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: AppColors.white,
     borderWidth: 1,
     borderColor: '#E6ECEC',
   },
@@ -421,7 +433,7 @@ const styles = StyleSheet.create({
   roomNoTextSelected: {
     fontWeight: '600',
     fontSize: responsiveFontSize(1.1),
-    color: '#FFFFFF',
+    color: AppColors.white,
     marginLeft: 3,
   },
   roomNoTextUnselected: {
