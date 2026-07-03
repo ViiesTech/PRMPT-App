@@ -1,4 +1,4 @@
-package com.prmpt
+package com.prmpt.app
 
 import android.app.Application
 import com.facebook.react.PackageList

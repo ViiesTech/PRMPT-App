@@ -1,4 +1,4 @@
-package com.prmpt
+package com.prmpt.app
 
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate
