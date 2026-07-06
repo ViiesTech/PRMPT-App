@@ -1,5 +1,7 @@
 export const Endpoints = {
-  verifySignupOtp: `auth/verifySignupOtp`,
-  login: `auth/signin`,
+  verifyAccount: `auth/forgotPassword`,
+  verifyOTP: `auth/verifyOtp`,
+  setPassword: `auth/password`,
   forgotPassword: `auth/forgotPassword`,
+  login: `auth/signin`,
 };

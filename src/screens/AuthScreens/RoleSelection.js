@@ -21,7 +21,7 @@ import LinearGradient from 'react-native-linear-gradient';
 import { useDispatch } from 'react-redux';
 import { setRole } from '../../redux/Slices';
 
-const RoleSelectionScreen = ({ navigation }) => {
+const RoleSelection = ({ navigation }) => {
   const dispatch = useDispatch();
   const [selectedRole, setSelectedRole] = useState('provider'); // default to provider
 
@@ -258,4 +258,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default RoleSelectionScreen;
+export default RoleSelection;

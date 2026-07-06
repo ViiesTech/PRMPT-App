@@ -22,14 +22,18 @@ import Fontisto from 'react-native-vector-icons/Fontisto';
 import AppButton from '../../componets/AppButton';
 import { AppImages } from '../../assets/Images/Index';
 import { showToast } from '../../utils/ShowToast';
+import { useSetPasswordMutation } from '../../Services/Auth';
 
-const SetPasswordScreen = ({ navigation }) => {
+const SetPassword = ({ navigation, route }) => {
+  const { type } = route?.params;
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [secureNew, setSecureNew] = useState(true);
   const [secureConfirm, setSecureConfirm] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [setPassword] = useSetPasswordMutation();
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     if (!newPassword || !confirmPassword) {
       showToast('Please enter your password');
       return;
@@ -38,7 +42,27 @@ const SetPasswordScreen = ({ navigation }) => {
       showToast('Passwords do not match');
       return;
     }
-    navigation.navigate('Login');
+    let payload = {
+      type:
+        type === 'verify' ? 'reset' : type === 'forget' ? 'reset' : 'change',
+      newPassword: confirmPassword,
+    };
+    setLoading(true);
+    try {
+      const res = await setPassword(payload);
+      console.log('res in setPassword:-', res);
+      if (res?.data?.success) {
+        showToast('Success', res?.data?.message);
+        navigation.navigate('Login');
+      } else {
+        showToast('API Error', res?.error?.data?.message, 'error');
+      }
+    } catch (error) {
+      console.log('error in setPassword:-', error);
+      showToast('API Error', res?.error?.data?.message, 'error');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -136,6 +160,7 @@ const SetPasswordScreen = ({ navigation }) => {
               gradient={true}
               variant="primary"
               showArrow={true}
+              loading={loading}
               onPress={handleContinue}
             />
           </View>
@@ -223,4 +248,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default SetPasswordScreen;
+export default SetPassword;

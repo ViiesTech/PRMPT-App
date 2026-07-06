@@ -18,31 +18,65 @@ import {
   responsiveWidth,
 } from '../../utils/Responsive_Dimensions';
 import Fontisto from 'react-native-vector-icons/Fontisto';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import { AppImages } from '../../assets/Images/Index';
 import AppButton from '../../componets/AppButton';
-import { useSelector } from 'react-redux';
-import { selectRole } from '../../redux/Slices';
+import { useDispatch, useSelector } from 'react-redux';
+import { selectRole, setRole, setToken, setUser } from '../../redux/Slices';
+import { useLoginMutation } from '../../Services/Auth';
+import { showToast } from '../../utils/ShowToast';
 
 const LoginScreen = ({ navigation }) => {
   const role = useSelector(selectRole);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [securePassword, setSecurePassword] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [login] = useLoginMutation();
+  const dispatch = useDispatch();
 
-  const handleLogin = () => {
-    if (role === 'staff') {
-      navigation.reset({
-        index: 0,
-        routes: [{ name: 'StaffTabs' }],
-      });
-    } else {
-      navigation.reset({
-        index: 0,
-        routes: [{ name: 'ProviderTabs' }],
-      });
+  const handleLogin = async () => {
+    if (!email) {
+      showToast('Validation Error', 'Please enter your email.');
+      return;
+    }
+    if (!password) {
+      showToast('Validation Error', 'Please enter your password.');
+      return;
+    }
+    setLoading(true);
+    try {
+      let payload = {
+        email: email,
+        password: password,
+      };
+      let res = await login(payload)?.unwrap();
+      setLoading(false);
+      console.log('res in login:-', res);
+      if (res?.success) {
+        showToast('Success', res?.message);
+        dispatch(setToken(res?.token));
+        dispatch(setUser(res?.data));
+        dispatch(setRole(res?.data?.type));
+        if (res?.data?.type === 'provider') {
+          navigation.reset({
+            index: 0,
+            routes: [{ name: 'ProviderTabs' }],
+          });
+        } else {
+          navigation.reset({
+            index: 0,
+            routes: [{ name: 'StaffTabs' }],
+          });
+        }
+      }
+    } catch (err) {
+      setLoading(false);
+      console.log('err in login:-', err);
+      showToast('API Error', err?.data?.message, 'error');
     }
   };
 
-  console.log('ROLE:-', role);
   return (
     <View style={styles.container}>
       <StatusBar backgroundColor={AppColors.white} barStyle="dark-content" />
@@ -56,7 +90,6 @@ const LoginScreen = ({ navigation }) => {
         >
           {/* Stylized Text Header matching Screenshot 2026-07-02 at 9.03.16 PM.png */}
           <View style={styles.headerContainer}>
-            {/* <Text style={styles.logoText}>Login</Text> */}
             <Image source={AppImages.login} style={styles.logo} />
           </View>
 
@@ -88,8 +121,19 @@ const LoginScreen = ({ navigation }) => {
                 placeholderTextColor="#A3A3A3"
                 value={password}
                 onChangeText={setPassword}
-                secureTextEntry={true}
+                secureTextEntry={securePassword}
               />
+              <TouchableOpacity
+                onPress={() => setSecurePassword(!securePassword)}
+                style={styles.eyeIconBtn}
+                activeOpacity={0.6}
+              >
+                <Ionicons
+                  name={securePassword ? 'eye-off-outline' : 'eye-outline'}
+                  size={20}
+                  color="#A3A3A3"
+                />
+              </TouchableOpacity>
             </View>
           </View>
 
@@ -107,6 +151,7 @@ const LoginScreen = ({ navigation }) => {
             gradient={true}
             showArrow={true}
             variant="primary"
+            loading={loading}
             onPress={handleLogin}
           />
 
@@ -175,6 +220,10 @@ const styles = StyleSheet.create({
     color: AppColors.black,
     height: '100%',
     paddingLeft: responsiveWidth(3),
+    paddingRight: responsiveWidth(2),
+  },
+  eyeIconBtn: {
+    padding: responsiveWidth(1),
   },
   forgotBtn: {
     alignSelf: 'flex-end',

@@ -23,36 +23,43 @@ import AppButton from '../../componets/AppButton'; // Ensure correct path spelli
 import { AppImages } from '../../assets/Images/Index';
 import { useForgotPasswordMutation } from '../../Services/Auth';
 import { showToast } from '../../utils/ShowToast';
+import { useDispatch } from 'react-redux';
+import { setToken } from '../../redux/Slices';
 
-const ForgotPasswordScreen = ({ navigation }) => {
+const ForgotPassword = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [forgotPassword] = useForgotPasswordMutation();
+  const dispatch = useDispatch();
 
   const handleSendCode = async () => {
-    navigation.navigate('EmailVerification');
-    // if (!email) {
-    //   showToast('Error', 'Please enter your email');
-    //   return;
-    // }
-    // let payload = {
-    //   type: 'forget',
-    //   email: email,
-    // };
-    // setLoading(true);
-    // let res = await forgotPassword(payload);
-    // setLoading(false);
-    // console.log('res in forgotPassword:-', res);
-    // if (res?.data?.status) {
-    //   showToast('Success', res?.data?.message);
-    //   navigation.navigate('EmailVerification', {
-    //     email: email,
-    //     type: 'forget',
-    //   });
-    // } else {
-    //   console.log('err in forgotPassword:-', res?.error?.data?.message);
-    //   showToast('Error', res?.error?.data?.message, 'error');
-    // }
+    if (!email) {
+      showToast('Please enter your email.');
+      return;
+    }
+
+    try {
+      let payload = {
+        type: 'forget',
+        email: email,
+      };
+      setLoading(true);
+      let res = await forgotPassword(payload)?.unwrap();
+      setLoading(false);
+      console.log('res in forgotPassword:-', res);
+      if (res?.success) {
+        showToast('Success', res?.message);
+        dispatch(setToken(res?.token));
+        navigation.navigate('OTP', {
+          email: email,
+          type: 'forget',
+        });
+      }
+    } catch (err) {
+      setLoading(false);
+      console.log('err in forgotPassword:-', err);
+      showToast('API Error', err?.data?.message, 'error');
+    }
   };
 
   return (
@@ -111,6 +118,7 @@ const ForgotPasswordScreen = ({ navigation }) => {
               gradient={true}
               variant="primary"
               showArrow={true}
+              loading={loading}
               onPress={handleSendCode}
             />
           </View>
@@ -194,4 +202,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default ForgotPasswordScreen;
+export default ForgotPassword;

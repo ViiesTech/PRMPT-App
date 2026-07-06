@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View, ActivityIndicator } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import {
   responsiveFontSize,
@@ -18,6 +18,8 @@ const AppButton = ({
   textStyle,
   showArrow = false,
   fontSize,
+  loading = false,
+  disabled = false,
 }) => {
   // Color themes based on Screenshot 2026-07-02 at 9.03.16 PM.png
   const primaryColors = [AppColors.g1, AppColors.g2, AppColors.g1]; // Light Teal to Dark Teal
@@ -26,32 +28,51 @@ const AppButton = ({
     variant === 'primary' ? primaryColors : secondaryColors;
 
   // Render content logic inside the button
-  const renderContent = () => (
-    <View
-      style={{
-        flexDirection: 'row',
-        alignItems: 'center',
-        width: '100%',
-        height: '100%',
-        justifyContent: 'center',
-      }}
-    >
-      <Text style={[styles.btnText(fontSize), textStyle]}>{title}</Text>
-      {showArrow && (
-        <Feather
-          name="arrow-right"
-          size={26}
-          color="#FFFFFF"
-          style={styles.arrowIcon}
-        />
-      )}
-    </View>
-  );
+  const renderContent = () => {
+    if (loading) {
+      return (
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            width: '100%',
+            height: '100%',
+            justifyContent: 'center',
+          }}
+        >
+          <ActivityIndicator size="small" color="#FFFFFF" />
+        </View>
+      );
+    }
+
+    return (
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          width: '100%',
+          height: '100%',
+          justifyContent: 'center',
+        }}
+      >
+        <Text style={[styles.btnText(fontSize), textStyle]}>{title}</Text>
+        {showArrow && (
+          <Feather
+            name="arrow-right"
+            size={26}
+            color="#FFFFFF"
+            style={styles.arrowIcon}
+          />
+        )}
+      </View>
+    );
+  };
 
   return (
     <TouchableOpacity
       activeOpacity={0.8}
       onPress={onPress}
+      disabled={disabled || loading}
       style={[styles.wrapper, style]}
     >
       {gradient ? (

@@ -21,12 +21,46 @@ import Fontisto from 'react-native-vector-icons/Fontisto';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import AppButton from '../../componets/AppButton';
 import { AppImages } from '../../assets/Images/Index';
+import { useVerifyAccountMutation } from '../../Services/Auth';
+import { showToast } from '../../utils/ShowToast';
+import { useDispatch } from 'react-redux';
+import { setToken } from '../../redux/Slices';
 
-const VerifyAccountScreen = ({ navigation }) => {
+const VerifyAccount = ({ navigation }) => {
+  const dispatch = useDispatch();
   const [email, setEmail] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [verifyAccount] = useVerifyAccountMutation();
 
-  const handleSendCode = () => {
-    navigation.navigate('EmailVerification');
+  const handleSendCode = async () => {
+    try {
+      setLoading(true);
+      if (!email) {
+        showToast('Error', 'Please enter your email');
+        return;
+      }
+      let payload = {
+        type: 'verify',
+        email: email,
+      };
+      let res = await verifyAccount(payload);
+      setLoading(false);
+      console.log('res in verifyAccount:-', res);
+      if (res?.data?.success) {
+        showToast('Success', res?.data?.message);
+        dispatch(setToken(res?.data?.token));
+        navigation.navigate('OTP', {
+          email: email,
+          type: 'verify',
+        });
+      } else {
+        showToast('API Error', res?.error?.data?.message, 'error');
+      }
+    } catch (error) {
+      setLoading(false);
+      console.log('err in verifyAccount:-', res?.error?.data?.message);
+      showToast('API Error', res?.error?.data?.message, 'error');
+    }
   };
 
   return (
@@ -85,6 +119,7 @@ const VerifyAccountScreen = ({ navigation }) => {
               gradient={true}
               variant="primary"
               showArrow={true}
+              loading={loading}
               onPress={handleSendCode}
             />
           </View>
@@ -178,4 +213,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default VerifyAccountScreen;
+export default VerifyAccount;

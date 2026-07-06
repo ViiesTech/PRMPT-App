@@ -25,14 +25,28 @@ import {
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import AppButton from '../../componets/AppButton'; // Keeping your current path typo
 import { AppImages } from '../../assets/Images/Index';
+import {
+  useVerifyOTPMutation,
+  useVerifyAccountMutation,
+  useForgotPasswordMutation,
+} from '../../Services/Auth';
+import { showToast } from '../../utils/ShowToast';
+import { useDispatch } from 'react-redux';
+import { setToken } from '../../redux/Slices';
 
-const CELL_COUNT = 4;
+const CELL_COUNT = 6;
 const INITIAL_TIME = 159; // 2 minutes and 39 seconds in total seconds
 
-const EmailVerificationScreen = ({ navigation }) => {
+const OTP = ({ navigation, route }) => {
   const [value, setValue] = useState('');
   const [timeLeft, setTimeLeft] = useState(INITIAL_TIME); // Timer State
+  const [loading, setLoading] = useState(false);
+  const [verifyOTP] = useVerifyOTPMutation();
+  const [verifyAccount] = useVerifyAccountMutation();
+  const [forgotPassword] = useForgotPasswordMutation();
 
+  const { email, type } = route.params;
+  const dispatch = useDispatch();
   const ref = useBlurOnFulfill({ value, cellCount: CELL_COUNT });
   const [props, getCellOnLayoutHandler] = useClearByFocusCell({
     value,
@@ -62,12 +76,67 @@ const EmailVerificationScreen = ({ navigation }) => {
     return `${formattedMinutes}:${formattedSeconds}`;
   };
 
-  const handleResendCode = () => {
-    // Apni Resend OTP API Call yahan add karein
-    setTimeLeft(INITIAL_TIME); // Timer reset code
-    setValue(''); // Optional: Clear old input
+  const handleResendCode = async () => {
+    try {
+      if (!email) {
+        showToast('Error', 'Please enter your email');
+        return;
+      }
+      let payload = {
+        type: type,
+        email: email,
+      };
+      let res =
+        type == 'forget'
+          ? await forgotPassword(payload)
+          : await verifyAccount(payload);
+
+      console.log('res in handleResendCode:-', res);
+      if (res?.data?.success) {
+        setTimeLeft(INITIAL_TIME);
+        setValue('');
+        showToast('Success', res?.data?.message);
+        dispatch(setToken(res?.data?.token));
+      } else {
+        showToast('API Error', res?.error?.data?.message, 'error');
+      }
+    } catch (error) {
+      console.log('err in handleResendCode:-', res?.error?.data?.message);
+      showToast('API Error', res?.error?.data?.message, 'error');
+    }
   };
 
+  const handleVerifyOTP = async () => {
+    if (value.trim().length < CELL_COUNT) {
+      showToast(
+        'Validation Error',
+        `Please enter a valid ${CELL_COUNT}-digit OTP`,
+        'error',
+      );
+      return;
+    }
+    try {
+      setLoading(true);
+      let res = await verifyOTP({ otp: value });
+      setLoading(false);
+      console.log('res in verifyOTP:-', res);
+      if (res?.data?.success) {
+        showToast('Success', res?.data?.message);
+        dispatch(setToken(res?.data?.token));
+        navigation.navigate('SetPassword', {
+          type: type,
+        });
+      } else {
+        showToast('API Error', res?.error?.data?.message, 'error');
+      }
+    } catch (error) {
+      setLoading(false);
+      console.log('err in verifyOTP:-', res?.error?.data?.message);
+      showToast('API Error', res?.error?.data?.message, 'error');
+    }
+  };
+
+  // console.log('type:-', type);
   return (
     <View style={styles.container}>
       <StatusBar backgroundColor={AppColors.white} barStyle="dark-content" />
@@ -152,7 +221,8 @@ const EmailVerificationScreen = ({ navigation }) => {
               gradient={true}
               variant="primary"
               showArrow={true}
-              onPress={() => navigation.navigate('SetPassword')}
+              loading={loading}
+              onPress={handleVerifyOTP}
             />
           </View>
         </ScrollView>
@@ -209,8 +279,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   cell: {
-    width: responsiveWidth(18),
-    height: responsiveWidth(16),
+    width: responsiveWidth(12),
+    height: responsiveWidth(12),
     backgroundColor: '#F0F4F4',
     borderRadius: 10,
     justifyContent: 'center',
@@ -226,14 +296,13 @@ const styles = StyleSheet.create({
     borderColor: '#134E50',
   },
   cellText: {
-    fontSize: responsiveFontSize(3),
+    fontSize: responsiveFontSize(2.8),
     color: '#134E50',
     fontWeight: '700',
   },
   timerRow: {
     width: '100%',
     alignItems: 'flex-end',
-    paddingRight: responsiveWidth(3),
     marginBottom: responsiveHeight(6),
   },
   timerText: {
@@ -255,4 +324,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default EmailVerificationScreen;
+export default OTP;

@@ -1,24 +1,31 @@
 import { baseApi, apiMethods } from '../api';
 import { Endpoints } from '../../config/Endpoints';
 
-const verifySignupOtp = body => {
-  console.log('verifySignupOtp_body:-', body);
+const verifyAccount = body => {
   return {
-    url: Endpoints.verifySignupOtp,
+    url: Endpoints.verifyAccount,
     method: apiMethods.post,
     body,
   };
 };
-const login = body => {
-  console.log('login_body:-', body);
+
+const verifyOTP = body => {
   return {
-    url: Endpoints.login,
+    url: Endpoints.verifyOTP,
     method: apiMethods.post,
     body,
   };
 };
+
+const setPassword = body => {
+  return {
+    url: Endpoints.setPassword,
+    method: apiMethods.post,
+    body,
+  };
+};
+
 const forgotPassword = body => {
-  console.log('forgetPassword_body:-', body);
   return {
     url: Endpoints.forgotPassword,
     method: apiMethods.post,
@@ -26,17 +33,29 @@ const forgotPassword = body => {
   };
 };
 
+const login = body => {
+  return {
+    url: Endpoints.login,
+    method: apiMethods.post,
+    body,
+  };
+};
+
 export const AuthService = baseApi.injectEndpoints({
   endpoints: build => ({
-    verifySignupOtp: build.mutation({ query: verifySignupOtp }),
-    login: build.mutation({ query: login }),
+    verifyAccount: build.mutation({ query: verifyAccount }),
+    verifyOTP: build.mutation({ query: verifyOTP }),
+    setPassword: build.mutation({ query: setPassword }),
     forgotPassword: build.mutation({ query: forgotPassword }),
+    login: build.mutation({ query: login }),
   }),
   overrideExisting: true,
 });
 
 export const {
-  useVerifySignupOtpMutation,
-  useLoginMutation,
+  useVerifyAccountMutation,
+  useVerifyOTPMutation,
+  useSetPasswordMutation,
   useForgotPasswordMutation,
+  useLoginMutation,
 } = AuthService;
