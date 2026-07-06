@@ -35,8 +35,18 @@
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
+	<key>NSCameraUsageDescription</key>
+	<string>PRMPT needs camera access to capture photos and videos for your profile and documents.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>PRMPT needs your location to provide nearby features and relevant updates.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string></string>
+	<string>PRMPT requires access to your location to show relevant nearby features and updates.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>PRMPT needs microphone access when you record video content.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>PRMPT needs permission to save selected images to your photo library.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>PRMPT needs photo library access to upload profile photos and documents.</string>
 	<key>RCTNewArchEnabled</key>
 	<true/>
 	<key>UIAppFonts</key>
