@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -9,7 +9,6 @@ import {
   Platform,
   Modal,
   TextInput,
-  Alert,
   KeyboardAvoidingView,
 } from 'react-native';
 import {
@@ -22,105 +21,59 @@ import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
 import Feather from 'react-native-vector-icons/Feather';
 import AppButton from '../../componets/AppButton';
 import { AppColors } from '../../utils/AppColors';
+import {
+  useGetAllServicesQuery,
+  useGetAllRoomsQuery,
+  useGetAllProfilesQuery,
+  useCreateBookingMutation,
+} from '../../Services/OtherServices';
+import AppLoader from '../../componets/AppLoader';
+import { showToast } from '../../utils/ShowToast';
 
-const categories = [
-  {
-    id: 'exams',
-    label: 'Exams',
-    icon: 'search',
+const serviceThemes = {
+  exams: {
     color: '#06B6D4',
     bg: '#E0F7FA',
     itemBg: '#F0FDFA',
     itemBorder: '#CCFBF1',
   },
-  {
-    id: 'anesthesia',
-    label: 'Anesthesia',
-    icon: 'syringe',
+  anesthesia: {
     color: '#EF4444',
     bg: '#FEE2E2',
     itemBg: '#FFF5F5',
     itemBorder: '#FED7D7',
   },
-  {
-    id: 'restorative',
-    label: 'Restorative',
-    icon: 'wrench',
+  restorative: {
     color: '#8B5CF6',
     bg: '#EDE9FE',
     itemBg: '#F5F3FF',
     itemBorder: '#E9D5FF',
   },
-  {
-    id: 'financial',
-    label: 'Financial',
-    icon: 'dollar-sign',
+  financial: {
     color: '#10B981',
     bg: '#D1FAE5',
     itemBg: '#F0FDF4',
     itemBorder: '#A7F3D0',
   },
-  {
-    id: 'misc',
-    label: 'Misc',
-    icon: 'ellipsis-h',
-    color: '#78716C',
-    bg: 'rgba(169, 152, 137, 0.3)',
-    itemBg: '#FAFAF9',
-    itemBorder: '#E7E5E4',
+  misc: {
+    color: '#A99889',
+    bg: '#E5DACE',
+    itemBg: '#F9F7F5',
+    itemBorder: '#E5DACE',
   },
-];
-
-const categoryData = {
-  exams: [
-    { title: 'Periodic Eval' },
-    { title: 'Comp Exam' },
-    { title: 'Limited Exam' },
-    { title: 'Post-Op' },
-  ],
-  anesthesia: [
-    { title: 'Local Anesthetic' },
-    { title: 'Nitrous Oxide' },
-    { title: 'IV Sedation' },
-    { title: 'General Anesthesia' },
-  ],
-  restorative: [
-    { title: 'Amalgam Filling' },
-    { title: 'Composite Filling' },
-    { title: 'Dental Crown' },
-    { title: 'Bridge Work' },
-  ],
-  financial: [
-    { title: 'Pre-Auth Request' },
-    { title: 'Payment Plan' },
-    { title: 'Copay Check' },
-    { title: 'Claim Submission' },
-  ],
-  misc: [
-    { title: 'Referral Form' },
-    { title: 'Consent Form' },
-    { title: 'Lab Instruction' },
-    { title: 'Follow-up Call' },
-  ],
 };
 
-const providerData = [
-  { label: 'Dr. Sarah Mitchell', value: 'Dr. Sarah Mitchell' },
-  { label: 'Dr. James Carter', value: 'Dr. James Carter' },
-  { label: 'Dr. Emily Watson', value: 'Dr. Emily Watson' },
-  { label: 'Dr. Robert Chen', value: 'Dr. Robert Chen' },
-];
+const defaultTheme = {
+  color: '#A99889',
+  bg: '#E5DACE',
+  itemBg: '#F9F7F5',
+  itemBorder: '#E5DACE',
+};
 
-const roomData = [
-  { label: 'Room 01', value: 'Room 01' },
-  { label: 'Room 02', value: 'Room 02' },
-  { label: 'Room 03', value: 'Room 03' },
-  { label: 'Room 04', value: 'Room 04' },
-  { label: 'Room 05', value: 'Room 05' },
-];
+// Dynamic provider and room data will be fetched via hooks
 
 const PageProvider = ({ navigation }) => {
-  const [selectedTab, setSelectedTab] = useState('exams');
+  const [selectedTab, setSelectedTab] = useState(null);
 
   // Form states
   const [patientName, setPatientName] = useState('');
@@ -133,8 +86,86 @@ const PageProvider = ({ navigation }) => {
   const [selectedItem, setSelectedItem] = useState(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
 
-  const activeCategory = categories.find(c => c.id === selectedTab);
-  const items = categoryData[selectedTab] || [];
+  const { data: servicesResponse, isLoading } = useGetAllServicesQuery();
+  const { data: providersResponse, isLoading: isLoadingProviders } =
+    useGetAllProfilesQuery({ type: 'provider' });
+  const { data: roomsResponse, isLoading: isLoadingRooms } =
+    useGetAllRoomsQuery({ available: true });
+  const [createBooking, { isLoading: isCreatingBooking }] =
+    useCreateBookingMutation();
+
+  const mappedProviders = useMemo(() => {
+    const providersList = providersResponse?.data || [];
+    return providersList.map(item => ({
+      label: item.fullName,
+      value: item._id,
+    }));
+  }, [providersResponse?.data]);
+
+  const mappedRooms = useMemo(() => {
+    const roomsList = roomsResponse?.data || [];
+    return roomsList.map(item => ({
+      label: `Room ${String(item.roomNo).padStart(2, '0')}`,
+      value: item._id,
+    }));
+  }, [roomsResponse?.data]);
+
+  const dynamicCategories = useMemo(() => {
+    const servicesList = servicesResponse?.data || [];
+    return servicesList.map(service => {
+      const nameLower = service.serviceName.trim().toLowerCase();
+
+      let themeKey = 'misc';
+      let icon = 'search';
+
+      if (nameLower.includes('new service') || nameLower.includes('exam')) {
+        themeKey = 'exams';
+        icon = 'search';
+      } else if (nameLower.includes('anesthesia')) {
+        themeKey = 'anesthesia';
+        icon = 'syringe';
+      } else if (nameLower.includes('restorative')) {
+        themeKey = 'restorative';
+        icon = 'wrench';
+      } else if (nameLower.includes('financial')) {
+        themeKey = 'financial';
+        icon = 'dollar-sign';
+      } else if (nameLower.includes('misc')) {
+        themeKey = 'misc';
+        icon = 'ellipsis-h';
+      } else {
+        themeKey = 'default';
+        icon = service.icon || 'search';
+      }
+
+      const theme = serviceThemes[themeKey] || defaultTheme;
+
+      return {
+        _id: service._id,
+        label: service.serviceName,
+        icon: icon,
+        color: theme.color,
+        bg: theme.bg,
+        itemBg: theme.itemBg,
+        itemBorder: theme.itemBorder,
+        subServices: service.subServicesId || [],
+      };
+    });
+  }, [servicesResponse?.data]);
+
+  useEffect(() => {
+    if (dynamicCategories.length > 0 && !selectedTab) {
+      setSelectedTab(dynamicCategories[0]._id);
+    }
+  }, [dynamicCategories, selectedTab]);
+
+  const activeCategory =
+    dynamicCategories.find(c => c._id === selectedTab) || dynamicCategories[0];
+  const items = activeCategory?.subServices || [];
+
+  if (isLoading && !servicesResponse) {
+    return <AppLoader />;
+  }
 
   const openModal = item => {
     setSelectedItem(item);
@@ -153,30 +184,58 @@ const PageProvider = ({ navigation }) => {
     setSelectedItem(null);
   };
 
-  const handleAddToQueue = () => {
+  const handleAddToQueue = async () => {
     if (!patientName.trim()) {
-      Alert.alert('Required Field', 'Please enter the patient name.');
+      showToast('Validation Error', 'Please enter the patient name.');
       return;
     }
     if (!selectedProvider) {
-      Alert.alert('Required Field', 'Please select a provider.');
+      showToast('Validation Error', 'Please select a provider.');
       return;
     }
     if (!selectedRoom) {
-      Alert.alert('Required Field', 'Please select a room.');
+      showToast('Validation Error', 'Please select a room.');
       return;
     }
     if (!additionalNotes.trim()) {
-      Alert.alert('Required Field', 'Please enter additional notes.');
+      showToast('Validation Error', 'Please enter additional notes.');
       return;
     }
 
-    // Success confirmation
-    Alert.alert(
-      'Success',
-      `${patientName} has been successfully added to the queue for ${selectedItem?.title}.`,
-      [{ text: 'OK', onPress: closeModal }],
-    );
+    try {
+      const response = await createBooking({
+        patientName: patientName.trim(),
+        subServiceId: selectedItem?._id,
+        providerId: selectedProvider,
+        roomId: selectedRoom,
+        newToClinic: newToOffice,
+        newToProvider: newToProvider,
+        note: additionalNotes.trim(),
+      }).unwrap();
+
+      if (response?.success) {
+        showToast(
+          'Success',
+          response?.message ||
+            `${patientName} has been successfully added to the queue for ${selectedItem?.subServiceName}.`,
+          'success',
+        );
+        closeModal();
+      } else {
+        showToast(
+          'Error',
+          response?.message || 'Failed to add booking.',
+          'error',
+        );
+      }
+    } catch (error) {
+      console.error('Create Booking Error:', error);
+      showToast(
+        'Error',
+        error?.data?.message || 'An error occurred while creating booking.',
+        'error',
+      );
+    }
   };
 
   return (
@@ -205,12 +264,12 @@ const PageProvider = ({ navigation }) => {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.tabsScrollContent}
         >
-          {categories.map(cat => {
-            const isSelected = cat.id === selectedTab;
+          {dynamicCategories.map(cat => {
+            const isSelected = cat._id === selectedTab;
             return (
               <TouchableOpacity
-                key={cat.id}
-                onPress={() => setSelectedTab(cat.id)}
+                key={cat._id}
+                onPress={() => setSelectedTab(cat._id)}
                 style={styles.tabContainer}
                 activeOpacity={0.8}
               >
@@ -272,7 +331,7 @@ const PageProvider = ({ navigation }) => {
                 />
               </View>
 
-              <Text style={styles.itemTitle}>{item.title}</Text>
+              <Text style={styles.itemTitle}>{item.subServiceName}</Text>
 
               <View
                 style={[
@@ -302,7 +361,11 @@ const PageProvider = ({ navigation }) => {
         <View style={styles.modalOverlay}>
           <KeyboardAvoidingView
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            style={{ width: '100%', alignItems: 'center', justifyContent: 'center' }}
+            style={{
+              width: '100%',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
           >
             <View style={styles.modalCard}>
               {/* Close Cross Button on Top Right */}
@@ -343,7 +406,7 @@ const PageProvider = ({ navigation }) => {
                       {activeCategory?.label}
                     </Text>
                     <Text style={styles.modalItemTitleText}>
-                      {selectedItem?.title}
+                      {selectedItem?.subServiceName}
                     </Text>
                   </View>
                 </View>
@@ -371,11 +434,15 @@ const PageProvider = ({ navigation }) => {
                       style={styles.dropdown}
                       placeholderStyle={styles.placeholderStyle}
                       selectedTextStyle={styles.selectedTextStyle}
-                      data={providerData}
+                      data={mappedProviders}
                       maxHeight={200}
                       labelField="label"
                       valueField="value"
-                      placeholder="Select provider..."
+                      placeholder={
+                        isLoadingProviders
+                          ? 'Loading providers...'
+                          : 'Select provider...'
+                      }
                       value={selectedProvider}
                       onChange={item => setSelectedProvider(item.value)}
                       containerStyle={styles.dropdownContainer}
@@ -390,11 +457,13 @@ const PageProvider = ({ navigation }) => {
                       style={styles.dropdown}
                       placeholderStyle={styles.placeholderStyle}
                       selectedTextStyle={styles.selectedTextStyle}
-                      data={roomData}
+                      data={mappedRooms}
                       maxHeight={200}
                       labelField="label"
                       valueField="value"
-                      placeholder="Select room..."
+                      placeholder={
+                        isLoadingRooms ? 'Loading rooms...' : 'Select room...'
+                      }
                       value={selectedRoom}
                       onChange={item => setSelectedRoom(item.value)}
                       containerStyle={styles.dropdownContainer}
@@ -434,7 +503,11 @@ const PageProvider = ({ navigation }) => {
                       ]}
                     >
                       {newToOffice && (
-                        <Feather name="check" size={11} color={AppColors.white} />
+                        <Feather
+                          name="check"
+                          size={11}
+                          color={AppColors.white}
+                        />
                       )}
                     </View>
                     <View style={styles.checkboxTextContainer}>
@@ -459,7 +532,11 @@ const PageProvider = ({ navigation }) => {
                       ]}
                     >
                       {newToProvider && (
-                        <Feather name="check" size={11} color={AppColors.white} />
+                        <Feather
+                          name="check"
+                          size={11}
+                          color={AppColors.white}
+                        />
                       )}
                     </View>
 
@@ -492,6 +569,7 @@ const PageProvider = ({ navigation }) => {
                     showArrow={true}
                     fontSize={1.5}
                     style={styles.confirmButton}
+                    loading={isCreatingBooking}
                   />
                 </View>
               </ScrollView>

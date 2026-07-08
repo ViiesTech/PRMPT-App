@@ -1,13 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
   TouchableOpacity,
   StatusBar,
   Platform,
   Modal,
+  FlatList,
+  ActivityIndicator,
 } from 'react-native';
 import {
   responsiveFontSize,
@@ -16,67 +17,160 @@ import {
 } from '../../utils/Responsive_Dimensions';
 import Feather from 'react-native-vector-icons/Feather';
 import { showToast } from '../../utils/ShowToast';
+import { useSelector } from 'react-redux';
+import { useFocusEffect } from '@react-navigation/native';
+import { selectUser } from '../../redux/Slices';
+import AppLoader from '../../componets/AppLoader';
+import {
+  useGetAllBookingsQuery,
+  useUpdateBookingStatusMutation,
+  useSetBookingDelayMutation,
+} from '../../Services/OtherServices';
+import { AppColors } from '../../utils/AppColors';
 
-const initialQueueData = [
-  {
-    id: '1',
-    patient: 'Tailor',
-    service: 'Crown Placement',
-    room: 'Room 2',
-    wait: '2m 43s',
-    status: 'Waiting',
-    description: 'its description',
-    provider: 'Jhon Doe',
-    avatarBg: '#E0E7FF',
-    avatarIconColor: '#4F46E5',
-    avatarIconName: 'tool',
-  },
-  {
-    id: '2',
-    patient: 'Alex',
-    service: 'Local Anesthesia',
-    room: 'Room 6',
-    wait: '3m 12s',
-    status: 'Waiting',
-    description: 'its Description',
-    provider: 'Jhon Doe',
-    avatarBg: '#FFE4E6',
-    avatarIconColor: '#E11D48',
-    avatarIconName: 'zap',
-  },
-  {
-    id: '3',
-    patient: 'Haviva Shepherd',
-    service: 'Consultation',
-    room: 'Room 4',
-    wait: '143h 15m',
-    status: 'In Progress',
-    description: 'Ipsum irure maiores',
-    provider: 'Jhon Doe',
-    avatarBg: '#FEF3C7',
-    avatarIconColor: '#D97706',
-    avatarIconName: 'more-horizontal',
-  },
-];
+const statusDisplayMapping = {
+  pending: 'Waiting',
+  inprogress: 'In Progress',
+  delayed: 'Delayed',
+  completed: 'Completed',
+};
+
+const getAvatarProps = index => {
+  const props = [
+    { bg: '#E0E7FF', color: '#4F46E5', icon: 'tool' },
+    { bg: '#FFE4E6', color: '#E11D48', icon: 'zap' },
+    { bg: '#FEF3C7', color: '#D97706', icon: 'more-horizontal' },
+  ];
+  return props[index % props.length];
+};
+
+const getRemainingDelayTime = delayTimeStr => {
+  if (!delayTimeStr) return '00:00';
+  const delayTime = new Date(delayTimeStr).getTime();
+  const now = Date.now();
+  const diffMs = delayTime - now;
+  if (diffMs <= 0) return '00:00';
+
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffSecs = Math.floor((diffMs % 60000) / 1000);
+
+  const paddedMins = String(diffMins).padStart(2, '0');
+  const paddedSecs = String(diffSecs).padStart(2, '0');
+
+  return `${paddedMins}:${paddedSecs}`;
+};
+
+const getElapsedTime = startTimeStr => {
+  if (!startTimeStr) return '0s';
+  const startTime = new Date(startTimeStr).getTime();
+  const now = Date.now();
+  const diffMs = now - startTime;
+  if (diffMs <= 0) return '0s';
+
+  const diffSecs = Math.floor(diffMs / 1000);
+  const secs = diffSecs % 60;
+  const diffMins = Math.floor(diffSecs / 60);
+  const mins = diffMins % 60;
+  const diffHours = Math.floor(diffMins / 60);
+  const hours = diffHours;
+
+  let timeString = '';
+  if (hours > 0) {
+    timeString += `${hours}h `;
+  }
+  if (mins > 0 || hours > 0) {
+    timeString += `${mins}m `;
+  }
+  timeString += `${secs}s`;
+
+  return timeString;
+};
 
 const ProviderQueue = ({ navigation }) => {
-  const [queueList, setQueueList] = useState(initialQueueData);
   const [delayModalVisible, setDelayModalVisible] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState(null);
+  const [page, setPage] = useState(1);
+  const [allBookings, setAllBookings] = useState([]);
+  // eslint-disable-next-line no-unused-vars
+  const [seconds, setSeconds] = useState(0);
 
-  const handleOnMyWay = id => {
-    setQueueList(prev =>
-      prev.map(item =>
-        item.id === id ? { ...item, status: 'In Progress' } : item,
-      ),
-    );
-    const patient = queueList.find(item => item.id === id);
-    if (patient) {
-      showToast(
-        'success',
-        'On My Way',
-        `${patient.patient} is now In Progress`,
-      );
+  const userData = useSelector(selectUser);
+  // eslint-disable-next-line no-unused-vars
+  const currentDate = new Date().toISOString().split('T')[0];
+
+  const {
+    data: bookingsData,
+    isLoading,
+    isFetching,
+    refetch,
+  } = useGetAllBookingsQuery(
+    {
+      providerId: userData?._id,
+      date: currentDate,
+      page,
+      limit: 10,
+    },
+    { skip: !userData?._id },
+  );
+
+  const [updateBookingStatus] = useUpdateBookingStatusMutation();
+  const [setBookingDelay] = useSetBookingDelayMutation();
+
+  useEffect(() => {
+    if (bookingsData?.data) {
+      if (page === 1) {
+        setAllBookings(bookingsData.data);
+      } else {
+        setAllBookings(prev => {
+          const newItems = bookingsData.data.filter(
+            item => !prev.some(existing => existing._id === item._id),
+          );
+          return [...prev, ...newItems];
+        });
+      }
+    }
+  }, [bookingsData, page]);
+
+  useFocusEffect(
+    useCallback(() => {
+      setPage(1);
+      refetch();
+    }, [refetch]),
+  );
+
+  const queueList = allBookings;
+
+  const hasActiveTimer = queueList.some(
+    item =>
+      item.status === 'inprogress' ||
+      ((item.status === 'delayed' || item.isDelay) &&
+        item.delay &&
+        new Date(item.delay).getTime() > Date.now()),
+  );
+
+  useEffect(() => {
+    if (!hasActiveTimer) {
+      return;
+    }
+
+    const interval = setInterval(() => {
+      setSeconds(s => s + 1);
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [hasActiveTimer]);
+
+  const handleOnMyWay = async id => {
+    try {
+      await updateBookingStatus({
+        bookingId: id,
+        status: 'inprogress',
+      }).unwrap();
+      showToast('On My Way', 'Patient is now In Progress', 'success');
+      setPage(1);
+      refetch();
+    } catch (err) {
+      showToast(err?.data?.message || 'Failed to update status', '', 'error');
     }
   };
 
@@ -85,30 +179,70 @@ const ProviderQueue = ({ navigation }) => {
     setDelayModalVisible(true);
   };
 
-  const handleSelectDelay = duration => {
+  const handleSelectDelay = async duration => {
+    // console.log('Duration:-', duration);
+    // console.log('Selected Patient:-', selectedPatient);
     if (selectedPatient) {
-      showToast(
-        'success',
-        'Delay Set',
-        `Added ${duration} delay for ${selectedPatient.patient}`,
-      );
+      const delayMinutes = parseInt(duration, 10) || 0;
+      try {
+        await setBookingDelay({
+          bookingId: selectedPatient._id,
+          delayMinutes,
+        }).unwrap();
+        showToast(
+          'Delay Set',
+          `Added ${duration} delay for ${selectedPatient.patientName}`,
+          'success',
+        );
+        setPage(1);
+        refetch();
+      } catch (err) {
+        showToast(err?.data?.message || 'Failed to set delay', '', 'error');
+      }
     }
     setDelayModalVisible(false);
     setSelectedPatient(null);
   };
 
-  const handleDismiss = id => {
-    const patient = queueList.find(item => item.id === id);
-    setQueueList(prev => prev.filter(item => item.id !== id));
-    if (patient) {
-      showToast(
-        'success',
-        'Patient Dismissed',
-        `${patient.patient} has been dismissed`,
-      );
+  const handleDismiss = async id => {
+    try {
+      await updateBookingStatus({
+        bookingId: id,
+        status: 'completed',
+      }).unwrap();
+      showToast('Patient Dismissed', 'Patient has been dismissed', 'success');
+      setPage(1);
+      refetch();
+    } catch (err) {
+      console.log('error: ', err);
+      showToast(err?.data?.message, '', 'error');
     }
   };
 
+  const listEmptyComponent = () => {
+    return (
+      <View style={styles.listEmptyComponent}>
+        <Text style={styles.emptyText}>No Bookings for today.</Text>
+      </View>
+    );
+  };
+
+  const renderFooter = useCallback(() => {
+    if (isFetching && page > 1) {
+      return (
+        <View style={styles.listFooterLoader}>
+          <ActivityIndicator size="small" color="#0C4F51" />
+        </View>
+      );
+    }
+    return null;
+  }, [isFetching, page]);
+
+  if (isLoading) {
+    return <AppLoader />;
+  }
+
+  // console.log('queueList:-', queueList);
   return (
     <View style={styles.container}>
       <StatusBar backgroundColor="#F5F7FA" barStyle="dark-content" />
@@ -132,14 +266,26 @@ const ProviderQueue = ({ navigation }) => {
       </View>
 
       {/* Queue Cards List Container */}
-      <ScrollView
+      <FlatList
+        data={queueList}
+        keyExtractor={item => item._id}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
-      >
-        {queueList.map(item => {
-          const isWaiting = item.status === 'Waiting';
+        ListEmptyComponent={listEmptyComponent}
+        renderItem={({ item, index }) => {
+          const isWaiting =
+            item.status === 'pending' || item.status === 'delayed';
+          const avatar = getAvatarProps(index);
+          const displayStatus =
+            statusDisplayMapping[item.status] || item.status;
+          const displayRoom = item.roomId?.roomNo
+            ? `Room ${item.roomId.roomNo}`
+            : 'No Room';
+          const serviceName =
+            item.subServiceId?.subServiceName || 'Unnamed Service';
+
           return (
-            <View key={item.id} style={styles.queueCard}>
+            <View style={styles.queueCard}>
               {/* Card Body - Left Handle & Avatar, Right Patient Info */}
               <View style={styles.cardMainBody}>
                 {/* Drag handle & avatar circle */}
@@ -147,13 +293,13 @@ const ProviderQueue = ({ navigation }) => {
                   <View
                     style={[
                       styles.avatarCircle,
-                      { backgroundColor: item.avatarBg },
+                      { backgroundColor: avatar.bg },
                     ]}
                   >
                     <Feather
-                      name={item.avatarIconName}
+                      name={avatar.icon}
                       size={16}
-                      color={item.avatarIconColor}
+                      color={avatar.color}
                     />
                   </View>
                 </View>
@@ -162,50 +308,68 @@ const ProviderQueue = ({ navigation }) => {
                 <View style={styles.cardMiddle}>
                   <View style={styles.patientInfoRow}>
                     <Text style={styles.patientName} numberOfLines={1}>
-                      {item.patient}
+                      {item.patientName}
                     </Text>
 
                     <View
                       style={[
                         styles.statusTag,
-                        item.status === 'In Progress'
+                        item.status === 'inprogress'
                           ? styles.statusTagInProgress
+                          : item.status === 'delayed'
+                          ? styles.statusTagDelayed
                           : styles.statusTagWaiting,
                       ]}
                     >
                       <Text
                         style={[
                           styles.statusTagText,
-                          item.status === 'In Progress'
+                          item.status === 'inprogress'
                             ? styles.statusTextInProgress
+                            : item.status === 'delayed'
+                            ? styles.statusTextDelayed
                             : styles.statusTextWaiting,
                         ]}
                       >
-                        {item.status}
+                        {displayStatus}
                       </Text>
                     </View>
                   </View>
 
                   {/* Second Row: Service Name & Room Tag */}
                   <View style={styles.serviceRoomRow}>
-                    <Text style={styles.serviceName}>{item.service}</Text>
+                    <Text style={styles.serviceName}>{serviceName}</Text>
                     <View style={styles.roomTag}>
-                      <Text style={styles.roomTagText}>{item.room}</Text>
+                      <Text style={styles.roomTagText}>{displayRoom}</Text>
                     </View>
                   </View>
 
-                  {item.description ? (
-                    <View style={styles.descriptionBox}>
-                      <Text style={styles.descriptionText}>
-                        {item.description}
+                  <View style={styles.metaContainer}>
+                    <Text style={styles.metaText}>
+                      Provider:{' '}
+                      <Text style={styles.counterText}>
+                        {item.providerId?.fullName}
                       </Text>
+                    </Text>
+
+                    <Text style={styles.metaText}>
+                      {item.status === 'inprogress' ? 'In progress' : 'Waiting'}
+                      :{' '}
+                      <Text style={styles.counterText}>
+                        {item.status === 'inprogress'
+                          ? getElapsedTime(item.resDuration)
+                          : item.status === 'delayed' || item.isDelay
+                          ? getRemainingDelayTime(item.delay)
+                          : item.resTime || '0m'}
+                      </Text>
+                    </Text>
+                  </View>
+
+                  {item?.note ? (
+                    <View style={styles.descriptionBox}>
+                      <Text style={styles.descriptionText}>{item?.note}</Text>
                     </View>
                   ) : null}
-
-                  <Text style={styles.metaText}>
-                    {item.status === 'In Progress' ? 'In progress' : 'Waiting'}:{' '}
-                    {item.wait} · Provider: {item.provider}
-                  </Text>
                 </View>
               </View>
 
@@ -216,36 +380,47 @@ const ProviderQueue = ({ navigation }) => {
                     <TouchableOpacity
                       style={styles.onMyWayButton}
                       activeOpacity={0.8}
-                      onPress={() => handleOnMyWay(item.id)}
+                      onPress={() => handleOnMyWay(item._id)}
                     >
                       <Feather name="arrow-right" size={14} color="#FFFFFF" />
                       <Text style={styles.onMyWayButtonText}>On My Way</Text>
                     </TouchableOpacity>
 
-                    <TouchableOpacity
-                      style={styles.delayButton}
-                      activeOpacity={0.8}
-                      onPress={() => handleOpenDelayModal(item)}
-                    >
-                      <Feather name="clock" size={14} color="#D97706" />
-                      <Text style={styles.delayButtonText}>Delay</Text>
-                    </TouchableOpacity>
+                    {item.status !== 'delayed' && !item.isDelay ? (
+                      <TouchableOpacity
+                        style={styles.delayButton}
+                        activeOpacity={0.8}
+                        onPress={() => handleOpenDelayModal(item)}
+                      >
+                        <Feather name="clock" size={14} color="#D97706" />
+                        <Text style={styles.delayButtonText}>Delay</Text>
+                      </TouchableOpacity>
+                    ) : null}
                   </>
                 ) : null}
 
-                <TouchableOpacity
-                  style={styles.dismissButton}
-                  activeOpacity={0.8}
-                  onPress={() => handleDismiss(item.id)}
-                >
-                  <Feather name="check" size={14} color="#DC2626" />
-                  <Text style={styles.dismissButtonText}>Dismiss</Text>
-                </TouchableOpacity>
+                {item?.status !== 'completed' ? (
+                  <TouchableOpacity
+                    style={styles.dismissButton}
+                    activeOpacity={0.8}
+                    onPress={() => handleDismiss(item._id)}
+                  >
+                    <Feather name="check" size={14} color="#DC2626" />
+                    <Text style={styles.dismissButtonText}>Dismiss</Text>
+                  </TouchableOpacity>
+                ) : null}
               </View>
             </View>
           );
-        })}
-      </ScrollView>
+        }}
+        onEndReached={() => {
+          if (bookingsData?.pagination?.hasNextPage && !isFetching) {
+            setPage(prev => prev + 1);
+          }
+        }}
+        onEndReachedThreshold={0.5}
+        ListFooterComponent={renderFooter}
+      />
 
       {/* Delay Modal Dialog */}
       <Modal
@@ -410,7 +585,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: responsiveHeight(0.8),
+    marginBottom: responsiveHeight(0.2),
   },
   serviceName: {
     fontSize: responsiveFontSize(1.5),
@@ -437,7 +612,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: responsiveHeight(1.5),
+    marginTop: responsiveHeight(0.5),
     gap: responsiveWidth(2),
   },
   onMyWayButton: {
@@ -548,6 +723,38 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#1E293B',
   },
+  statusTagInProgress: {
+    backgroundColor: '#D1FAE5',
+  },
+  statusTagDelayed: {
+    backgroundColor: '#FEF3C7',
+  },
+  statusTagWaiting: {
+    backgroundColor: '#E6F4EA',
+  },
+  statusTextInProgress: {
+    color: '#065F46',
+  },
+  statusTextDelayed: {
+    color: '#E6A300',
+  },
+  statusTextWaiting: {
+    color: '#10B981',
+  },
+  metaContainer: {
+    flexDirection: 'row',
+    gap: 10,
+    paddingBottom: 5,
+  },
+  counterText: {
+    color: AppColors.darkGray,
+    fontWeight: '600',
+  },
+  listFooterLoader: {
+    paddingVertical: responsiveHeight(2),
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   cancelButton: {
     width: '100%',
     alignItems: 'center',
@@ -564,17 +771,18 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#0C4F51',
   },
-  statusTagInProgress: {
-    backgroundColor: '#D1FAE5',
+  listEmptyComponent: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: responsiveHeight(10),
   },
-  statusTagWaiting: {
-    backgroundColor: '#E6F4EA',
-  },
-  statusTextInProgress: {
-    color: '#065F46',
-  },
-  statusTextWaiting: {
-    color: '#10B981',
+  emptyText: {
+    fontSize: responsiveFontSize(1.6),
+    fontWeight: '400',
+    color: '#0C4F51',
+    textAlign: 'center',
+    fontStyle: 'italic',
   },
 });
 

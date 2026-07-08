@@ -4,4 +4,14 @@ export const Endpoints = {
   setPassword: `auth/password`,
   forgotPassword: `auth/forgotPassword`,
   login: `auth/signin`,
+
+  providerDashboard: `stats/dashboard`,
+  kpiReports: `stats/kpi`,
+  getAllServices: `service/getAllServices`,
+  getAllBookings: `booking/getAllBookings`,
+  updateBookingStatus: `booking/updateBookingStatus`,
+  setBookingDelay: `booking/setBookingDelay`,
+  getAllRooms: `room/getAllRooms`,
+  getAllProfiles: `profile/getAllProfiles`,
+  createBooking: `booking/createBooking`,
 };

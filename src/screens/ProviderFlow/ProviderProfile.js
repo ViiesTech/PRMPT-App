@@ -15,8 +15,29 @@ import {
   responsiveWidth,
 } from '../../utils/Responsive_Dimensions';
 import Feather from 'react-native-vector-icons/Feather';
+import { useDispatch, useSelector } from 'react-redux';
+import { selectUser, setClearStore } from '../../redux/Slices';
 
 const ProviderProfile = ({ navigation }) => {
+  const dispatch = useDispatch();
+  const user = useSelector(selectUser);
+
+  const hadleLogout = () => {
+    dispatch(setClearStore());
+
+    // Reset navigation to Auth stack
+    const rootNav = navigation.getParent()?.getParent();
+    if (rootNav) {
+      rootNav.reset({
+        index: 0,
+        routes: [{ name: 'Auth', params: { screen: 'Splash' } }],
+      });
+    } else {
+      navigation.navigate('Auth', { screen: 'Splash' });
+    }
+  };
+
+  // console.log('user:-', user);
   return (
     <View style={styles.container}>
       <StatusBar backgroundColor="#F5F7FA" barStyle="dark-content" />
@@ -50,8 +71,10 @@ const ProviderProfile = ({ navigation }) => {
               <Feather name="edit-2" size={13} color="#FFFFFF" />
             </TouchableOpacity>
           </View>
-          <Text style={styles.profileName}>Robertson Mott</Text>
-          <Text style={styles.profileEmail}>robertsonmott878@gmail.com</Text>
+          <Text style={styles.profileName}>
+            {user?.fullName} {user?.lastName}
+          </Text>
+          <Text style={styles.profileEmail}>{user?.email}</Text>
         </View>
 
         {/* Horizontal Divider Line */}
@@ -81,17 +104,7 @@ const ProviderProfile = ({ navigation }) => {
           <TouchableOpacity
             style={styles.menuRow}
             activeOpacity={0.7}
-            onPress={() => {
-              const rootNav = navigation.getParent()?.getParent();
-              if (rootNav) {
-                rootNav.reset({
-                  index: 0,
-                  routes: [{ name: 'Auth', params: { screen: 'Splash' } }],
-                });
-              } else {
-                navigation.navigate('Auth', { screen: 'Splash' });
-              }
-            }}
+            onPress={hadleLogout}
           >
             <View style={styles.menuRowLeft}>
               <Feather

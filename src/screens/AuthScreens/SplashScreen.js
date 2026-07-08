@@ -15,8 +15,28 @@ import {
   responsiveWidth,
 } from '../../utils/Responsive_Dimensions';
 import { AppImages } from '../../assets/Images/Index';
+import { useFocusEffect } from '@react-navigation/native';
+import { useCallback } from 'react';
+import { useSelector } from 'react-redux';
+import { selectRole, selectToken } from '../../redux/Slices';
 
 const SplashScreen = ({ navigation }) => {
+  const token = useSelector(selectToken);
+  const role = useSelector(selectRole);
+  console.log('Token:-', token);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (token) {
+        if (role === 'provider') {
+          navigation.replace('ProviderTabs');
+        } else if (role === 'staff') {
+          navigation.replace('StaffTabs');
+        }
+      }
+    }, [navigation, token, role]),
+  );
+
   return (
     <LinearGradient
       colors={[AppColors.g1, AppColors.g2]}

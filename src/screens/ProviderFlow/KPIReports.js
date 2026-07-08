@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,8 @@ import {
   StatusBar,
   Platform,
   Image,
+  ActivityIndicator,
+  Modal,
 } from 'react-native';
 import {
   responsiveFontSize,
@@ -15,52 +17,73 @@ import {
   responsiveWidth,
 } from '../../utils/Responsive_Dimensions';
 import Feather from 'react-native-vector-icons/Feather';
+import { AppColors } from '../../utils/AppColors';
+import {
+  useKpiReportsQuery,
+  useGetAllServicesQuery,
+} from '../../Services/OtherServices';
+import { useFocusEffect } from '@react-navigation/native';
+import AppLoader from '../../componets/AppLoader';
 
-const doctorsData = [
-  {
-    id: '1',
-    name: 'Dr. Sarah Mitchell',
-    specialty: 'Nephrologist',
-    avatar:
-      'https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=100&h=100&fit=crop',
-    patients: '0',
-    avgResponse: '—',
-    avgCompletion: '—',
-  },
-  {
-    id: '2',
-    name: 'Dr. James Okafor',
-    specialty: 'Cardiologist',
-    avatar:
-      'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=100&h=100&fit=crop',
-    patients: '0',
-    avgResponse: '—',
-    avgCompletion: '—',
-  },
-  {
-    id: '3',
-    name: 'Dr. Priya Nair',
-    specialty: 'Ophthalmologist',
-    avatar:
-      'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=100&h=100&fit=crop',
-    patients: '0',
-    avgResponse: '—',
-    avgCompletion: '—',
-  },
-  {
-    id: '4',
-    name: 'Dr. Carlos Rivera',
-    specialty: 'Dermatologist',
-    avatar:
-      'https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=100&h=100&fit=crop',
-    patients: '0',
-    avgResponse: '—',
-    avgCompletion: '—',
-  },
-];
+const timeframeMapping = {
+  Day: 'day',
+  Week: 'week',
+  Month: 'month',
+  Year: 'year',
+};
 
 const KPIReports = ({ navigation }) => {
   const [selectedTimeframe, setSelectedTimeframe] = useState('Day');
+  const [selectedService, setSelectedService] = useState({
+    _id: 'all',
+    serviceName: 'All Services',
+  });
+  const [dropdownVisible, setDropdownVisible] = useState(false);
+
+  const { data, isLoading, isFetching, error, refetch } = useKpiReportsQuery({
+    period: timeframeMapping[selectedTimeframe],
+    subServiceId: selectedService._id,
+  });
+
+  const {
+    data: servicesData,
+    error: servicesError,
+    isLoading: servicesIsLoading,
+  } = useGetAllServicesQuery();
+
+  const dropdownServices = [
+    { _id: 'all', serviceName: 'All Services' },
+    ...(servicesData?.data || []),
+  ];
+
+  useFocusEffect(
+    useCallback(() => {
+      refetch();
+    }, [refetch]),
+  );
+
+  const responseData = data?.data;
+  const summary = responseData?.summary;
+
+  // console.log('KPI Query Params:', {
+  //   period: timeframeMapping[selectedTimeframe],
+  //   subServiceId: selectedService._id,
+  // });
+  // console.log('KPI State:', {
+  //   isLoading,
+  //   isFetching,
+  //   error: error ? JSON.stringify(error) : null,
+  // });
+  // console.log('KPI Data:', data);
+  // console.log('Services State:', {
+  //   servicesIsLoading,
+  //   error: servicesError ? JSON.stringify(servicesError) : null,
+  // });
+  // console.log('Services Data:', servicesData);
+
+  if (isLoading || isFetching) {
+    return <AppLoader />;
+  }
 
   return (
     <View style={styles.container}>
@@ -105,11 +128,68 @@ const KPIReports = ({ navigation }) => {
         </View>
 
         {/* Dropdown Selector */}
-        <TouchableOpacity style={styles.dropdownSelector} activeOpacity={0.8}>
-          <Text style={styles.dropdownText}>All Services</Text>
+        <TouchableOpacity
+          style={styles.dropdownSelector}
+          activeOpacity={0.8}
+          onPress={() => setDropdownVisible(true)}
+        >
+          <Text style={styles.dropdownText} numberOfLines={1}>
+            {selectedService.serviceName}
+          </Text>
           <Feather name="chevron-down" size={16} color="#64748B" />
         </TouchableOpacity>
       </View>
+
+      {/* Custom Dropdown Modal */}
+      <Modal
+        visible={dropdownVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setDropdownVisible(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setDropdownVisible(false)}
+        >
+          <View style={styles.dropdownModalContent}>
+            <Text style={styles.dropdownModalTitle}>Select Service</Text>
+            <ScrollView
+              style={styles.dropdownList}
+              showsVerticalScrollIndicator={false}
+            >
+              {dropdownServices.map(service => {
+                const isSelected = selectedService._id === service._id;
+                return (
+                  <TouchableOpacity
+                    key={service._id}
+                    style={[
+                      styles.dropdownItem,
+                      isSelected && styles.dropdownItemActive,
+                    ]}
+                    onPress={() => {
+                      setSelectedService(service);
+                      setDropdownVisible(false);
+                    }}
+                  >
+                    <Text
+                      style={[
+                        styles.dropdownItemText,
+                        isSelected && styles.dropdownItemTextActive,
+                      ]}
+                    >
+                      {service.serviceName}
+                    </Text>
+                    {isSelected && (
+                      <Feather name="check" size={16} color="#0C4F51" />
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
+        </TouchableOpacity>
+      </Modal>
 
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -126,7 +206,9 @@ const KPIReports = ({ navigation }) => {
               <Text style={styles.metricLabel} numberOfLines={1}>
                 Total Patients
               </Text>
-              <Text style={styles.metricValue}>0</Text>
+              <Text style={styles.metricValue}>
+                {summary?.totalPatients || 0}
+              </Text>
             </View>
           </View>
 
@@ -139,7 +221,7 @@ const KPIReports = ({ navigation }) => {
               <Text style={styles.metricLabel} numberOfLines={1}>
                 Completed
               </Text>
-              <Text style={styles.metricValue}>0</Text>
+              <Text style={styles.metricValue}>{summary?.completed || 0}</Text>
             </View>
           </View>
 
@@ -152,7 +234,9 @@ const KPIReports = ({ navigation }) => {
               <Text style={styles.metricLabel} numberOfLines={1}>
                 AVG Response
               </Text>
-              <Text style={styles.metricValue}>0</Text>
+              <Text style={styles.metricValue}>
+                {summary?.avgResponseFormatted || '—'}
+              </Text>
             </View>
           </View>
 
@@ -165,43 +249,67 @@ const KPIReports = ({ navigation }) => {
               <Text style={styles.metricLabel} numberOfLines={1}>
                 AVG Completion
               </Text>
-              <Text style={styles.metricValue}>0</Text>
+              <Text style={styles.metricValue}>
+                {summary?.avgCompletionFormatted || '—'}
+              </Text>
             </View>
           </View>
         </View>
 
         {/* Doctors Performance Cards List */}
         <View style={styles.doctorsListContainer}>
-          {doctorsData.map(doc => (
+          {responseData?.providers?.map(doc => (
             <View
-              key={doc.id}
+              key={doc._id}
               style={[styles.doctorCard, styles.doctorCardDefault]}
             >
               {/* Doctor Details Row */}
               <View style={styles.docHeaderRow}>
-                <Image source={{ uri: doc.avatar }} style={styles.docAvatar} />
+                {doc.profile ? (
+                  <Image
+                    source={{ uri: doc.profile }}
+                    style={styles.docAvatar}
+                  />
+                ) : (
+                  <View
+                    style={[
+                      styles.docAvatar,
+                      {
+                        backgroundColor: '#E2E8F0',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                      },
+                    ]}
+                  >
+                    <Feather name="user" size={24} color="#A0AEC0" />
+                  </View>
+                )}
                 <View style={styles.docInfoWrapper}>
                   <Text style={styles.docName} numberOfLines={1}>
-                    {doc.name}
+                    {doc.fullName}
                   </Text>
-                  <Text style={styles.docSpecialty}>{doc.specialty}</Text>
+                  <Text style={styles.docSpecialty}>{doc.designation}</Text>
                 </View>
               </View>
 
               {/* Performance Stats Row */}
               <View style={styles.docStatsRow}>
                 <View style={styles.statCol}>
-                  <Text style={styles.statValue}>{doc.patients}</Text>
+                  <Text style={styles.statValue}>{doc.totalPatients || 0}</Text>
                   <Text style={styles.statLabel}>PATIENTS</Text>
                 </View>
                 <View style={styles.vDivider} />
                 <View style={styles.statCol}>
-                  <Text style={styles.statValue}>{doc.avgResponse}</Text>
+                  <Text style={styles.statValue}>
+                    {doc.avgResponseFormatted || '—'}
+                  </Text>
                   <Text style={styles.statLabel}>AVG RESPONSE</Text>
                 </View>
                 <View style={styles.vDivider} />
                 <View style={styles.statCol}>
-                  <Text style={styles.statValue}>{doc.avgCompletion}</Text>
+                  <Text style={styles.statValue}>
+                    {doc.avgCompletionFormatted || '—'}
+                  </Text>
                   <Text style={styles.statLabel}>AVG COMPLETION</Text>
                 </View>
               </View>
@@ -222,9 +330,38 @@ const KPIReports = ({ navigation }) => {
                 </Text>
               </View>
 
-              <Text style={styles.noActivityText}>
-                No activity in this period
-              </Text>
+              {doc.subServices && doc.subServices.length > 0 ? (
+                doc.subServices.map((sub, sIndex) => (
+                  <View
+                    key={sub.subServiceId || sIndex}
+                    style={styles.tableDataRow}
+                  >
+                    <Text
+                      style={[
+                        styles.tableBodyText,
+                        styles.flex2,
+                        { fontWeight: '600' },
+                      ]}
+                      numberOfLines={1}
+                    >
+                      {sub.subServiceName || 'Unnamed Service'}
+                    </Text>
+                    <Text style={[styles.tableBodyText, styles.flex1]}>
+                      {sub.totalPatients || 0}
+                    </Text>
+                    <Text style={[styles.tableBodyText, styles.flex1_5]}>
+                      {sub.avgResponseFormatted || '—'}
+                    </Text>
+                    <Text style={[styles.tableBodyText, styles.flex1_5]}>
+                      {sub.avgCompletionFormatted || '—'}
+                    </Text>
+                  </View>
+                ))
+              ) : (
+                <Text style={styles.noActivityText}>
+                  No activity in this period
+                </Text>
+              )}
             </View>
           ))}
         </View>
@@ -455,6 +592,66 @@ const styles = StyleSheet.create({
     color: '#94A3B8',
     fontSize: responsiveFontSize(1.35),
     paddingVertical: responsiveHeight(1.5),
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  dropdownModalContent: {
+    width: responsiveWidth(80),
+    maxHeight: responsiveHeight(50),
+    backgroundColor: AppColors.white,
+    borderRadius: 16,
+    padding: responsiveWidth(5),
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 5,
+  },
+  dropdownModalTitle: {
+    fontSize: responsiveFontSize(2),
+    fontWeight: '700',
+    color: '#0C4F51',
+    marginBottom: responsiveHeight(1.5),
+  },
+  dropdownList: {
+    width: '100%',
+  },
+  dropdownItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: responsiveHeight(1.5),
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  dropdownItemActive: {
+    backgroundColor: '#F0FDF4',
+    borderRadius: 8,
+    paddingHorizontal: responsiveWidth(2),
+  },
+  dropdownItemText: {
+    fontSize: responsiveFontSize(1.7),
+    color: '#334155',
+  },
+  dropdownItemTextActive: {
+    fontWeight: '700',
+    color: '#0C4F51',
+  },
+  tableDataRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: responsiveHeight(1.0),
+    paddingHorizontal: responsiveWidth(2),
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  tableBodyText: {
+    fontSize: responsiveFontSize(1.35),
+    color: '#334155',
   },
 });
 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -17,31 +17,35 @@ import {
 } from '../../utils/Responsive_Dimensions';
 import Feather from 'react-native-vector-icons/Feather';
 import { AppImages } from '../../assets/Images/Index';
-
-const roomsData = [
-  {
-    id: '01',
-    active: true,
-    patient: 'Andrew Ainsley',
-    type: 'Post-OP',
-    status: 'Requested',
-    wait: '3m 22s',
-  },
-  { id: '02', active: false },
-  { id: '03', active: false },
-  { id: '04', active: false },
-  { id: '05', active: false },
-  { id: '06', active: false },
-  { id: '07', active: false },
-  { id: '08', active: false },
-  { id: '09', active: false },
-  { id: '10', active: false },
-];
+import { selectUser } from '../../redux/Slices';
+import { useSelector } from 'react-redux';
+import { useProviderDashboardQuery } from '../../Services/OtherServices';
+import { useFocusEffect } from '@react-navigation/native';
+import AppLoader from '../../componets/AppLoader';
 
 const StaffHome = ({ navigation }) => {
-  const [selectedRoomId, setSelectedRoomId] = useState('01');
+  const [selectedRoomId, setSelectedRoomId] = useState(1);
+  const userData = useSelector(selectUser);
+  const {
+    data: dashboardData,
+    isLoading,
+    refetch,
+  } = useProviderDashboardQuery();
 
-  const currentSelectedRoom = roomsData.find(r => r.id === selectedRoomId);
+  useFocusEffect(
+    useCallback(() => {
+      refetch();
+    }, [refetch]),
+  );
+
+  const responseData = dashboardData?.data;
+  const bookingsCounts = responseData?.bookings?.counts;
+  const roomsList = responseData?.rooms || [];
+  const currentSelectedRoom = roomsList.find(r => r.roomNo === selectedRoomId);
+
+  if (isLoading && !responseData) {
+    return <AppLoader />;
+  }
 
   return (
     <View style={styles.container}>
@@ -55,7 +59,9 @@ const StaffHome = ({ navigation }) => {
         <View style={styles.headerRow}>
           <View>
             <Text style={styles.greetingText}>Good Morning 👋</Text>
-            <Text style={styles.profileName}>Robertson Mott</Text>
+            <Text style={styles.profileName}>
+              {userData?.fullName} {userData?.lastName}
+            </Text>
           </View>
           <TouchableOpacity
             style={styles.bellNotificationBtn}
@@ -89,7 +95,9 @@ const StaffHome = ({ navigation }) => {
               <Text style={styles.metricLabel} numberOfLines={1}>
                 Waiting
               </Text>
-              <Text style={styles.metricCounter}>0</Text>
+              <Text style={styles.metricCounter}>
+                {bookingsCounts?.pending || 0}
+              </Text>
             </View>
           </View>
 
@@ -101,7 +109,9 @@ const StaffHome = ({ navigation }) => {
               <Text style={styles.metricLabel} numberOfLines={1}>
                 In Progress
               </Text>
-              <Text style={styles.metricCounter}>0</Text>
+              <Text style={styles.metricCounter}>
+                {bookingsCounts?.inprogress || 0}
+              </Text>
             </View>
           </View>
 
@@ -113,7 +123,9 @@ const StaffHome = ({ navigation }) => {
               <Text style={styles.metricLabel} numberOfLines={1}>
                 Delayed
               </Text>
-              <Text style={styles.metricCounter}>0</Text>
+              <Text style={styles.metricCounter}>
+                {bookingsCounts?.delayed || 0}
+              </Text>
             </View>
           </View>
         </View>
@@ -123,16 +135,18 @@ const StaffHome = ({ navigation }) => {
           <Text style={styles.blockHeadingTitle}>Room Status Grid</Text>
 
           <View style={styles.gridRoomsContainer}>
-            {roomsData.map((room, index) => {
-              const isLastInRow = (index + 1) % 4 === 0;
+            {roomsList.map((room, index) => {
+              const isLastInRow = (index + 1) % 3 === 0;
               const dynamicMarginRight = isLastInRow ? 0 : '2%';
-              const isCurrentlySelected = room.id === selectedRoomId;
+              const isCurrentlySelected = room.roomNo === selectedRoomId;
+              const isActive = !!room.bookingId;
+              const booking = room.bookingId;
 
               return (
                 <TouchableOpacity
-                  key={room.id}
+                  key={room._id}
                   activeOpacity={0.8}
-                  onPress={() => setSelectedRoomId(room.id)}
+                  onPress={() => setSelectedRoomId(room.roomNo)}
                   style={[
                     styles.roomBox,
                     isCurrentlySelected
@@ -145,7 +159,7 @@ const StaffHome = ({ navigation }) => {
                     <Feather
                       name="home"
                       size={11}
-                      color={isCurrentlySelected ? '#FFFFFF' : '#666666'}
+                      color={isCurrentlySelected ? AppColors.white : '#666666'}
                     />
                     <Text
                       style={
@@ -154,22 +168,24 @@ const StaffHome = ({ navigation }) => {
                           : styles.roomNoTextUnselected
                       }
                     >
-                      Room {room.id}
+                      Room {room.roomNo}
                     </Text>
                   </View>
 
-                  {room.active ? (
+                  {isActive ? (
                     <View>
                       <Text
                         style={[
                           styles.activePatientName,
                           {
-                            color: isCurrentlySelected ? '#FFFFFF' : '#1A202C',
+                            color: isCurrentlySelected
+                              ? AppColors.white
+                              : AppColors.black,
                           },
                         ]}
                         numberOfLines={1}
                       >
-                        {room.patient}
+                        {booking.patientName}
                       </Text>
                       <Text
                         style={[
@@ -178,18 +194,23 @@ const StaffHome = ({ navigation }) => {
                             color: isCurrentlySelected ? '#A9D6D7' : '#718096',
                           },
                         ]}
+                        numberOfLines={1}
                       >
-                        {room.type}
+                        {booking.subServiceId?.subServiceName}
                       </Text>
                       <Text
                         style={[
                           styles.activeStatusTag,
                           {
-                            color: isCurrentlySelected ? '#FFFFFF' : '#A0AEC0',
+                            color: isCurrentlySelected
+                              ? AppColors.white
+                              : '#A0AEC0',
                           },
                         ]}
                       >
-                        {room.status}
+                        {booking.status === 'inprogress'
+                          ? 'In Progress'
+                          : booking.status}
                       </Text>
                     </View>
                   ) : (
@@ -211,28 +232,25 @@ const StaffHome = ({ navigation }) => {
         {/* Section 2: Patient Queue / Conditional Detail View */}
         <View style={styles.whiteSectionBlock}>
           <Text style={styles.blockHeadingTitle}>Patient Queue</Text>
-          <Text style={styles.doctorSubheading}>
-            Dr. Sarah Mitchell (Room {selectedRoomId})
-          </Text>
+          {currentSelectedRoom && currentSelectedRoom.bookingId && (
+            <Text style={styles.doctorSubheading}>
+              Dr. {currentSelectedRoom?.bookingId?.providerId?.fullName} (Room{' '}
+              {selectedRoomId})
+            </Text>
+          )}
 
-          {currentSelectedRoom && currentSelectedRoom.active ? (
+          {currentSelectedRoom && currentSelectedRoom.bookingId ? (
             <View>
               {/* Table Headers */}
               <View style={styles.tableHeaderRow}>
-                <Text style={[styles.tableHeadCell, { flex: 2.2 }]}>
+                <Text style={[styles.tableHeadCell, styles.colPatient]}>
                   PATIENT
                 </Text>
-                <Text style={[styles.tableHeadCell, { flex: 1.5 }]}>
+                <Text style={[styles.tableHeadCell, styles.colService]}>
                   SERVICE
                 </Text>
-                <Text style={[styles.tableHeadCell, { flex: 1.5 }]}>ROOM</Text>
-                <Text style={[styles.tableHeadCell, { flex: 1.3 }]}>WAIT</Text>
-                <Text
-                  style={[
-                    styles.tableHeadCell,
-                    { flex: 1.5, textAlign: 'right' },
-                  ]}
-                >
+                <Text style={[styles.tableHeadCell, styles.colWait]}>WAIT</Text>
+                <Text style={[styles.tableHeadCell, styles.colStatusText]}>
                   STATUS
                 </Text>
               </View>
@@ -240,26 +258,29 @@ const StaffHome = ({ navigation }) => {
               {/* Table Row Content */}
               <View style={styles.tableDataRow}>
                 <Text
-                  style={[
-                    styles.tableBodyText,
-                    { flex: 2.2, fontWeight: '700' },
-                  ]}
+                  style={[styles.tableBodyText, styles.colPatientBold]}
+                  numberOfLines={1}
                 >
-                  {currentSelectedRoom.patient}
+                  {currentSelectedRoom.bookingId.patientName}
                 </Text>
-                <Text style={[styles.tableBodyText, { flex: 1.5 }]}>
-                  {currentSelectedRoom.type}
+                <Text
+                  style={[styles.tableBodyText, styles.colService]}
+                  numberOfLines={1}
+                >
+                  {currentSelectedRoom.bookingId.subServiceId?.subServiceName}
                 </Text>
-                <Text style={[styles.tableBodyText, { flex: 1.5 }]}>
-                  Room {currentSelectedRoom.id}
+                <Text
+                  style={[styles.tableBodyText, styles.colWait]}
+                  numberOfLines={1}
+                >
+                  {currentSelectedRoom.bookingId.resTime || '0m'}
                 </Text>
-                <Text style={[styles.tableBodyText, { flex: 1.3 }]}>
-                  {currentSelectedRoom.wait || '0m'}
-                </Text>
-                <View style={{ flex: 1.5, alignItems: 'flex-end' }}>
+                <View style={styles.colStatus}>
                   <View style={styles.waitingStatusPill}>
                     <Text style={styles.waitingPillText}>
-                      {currentSelectedRoom.status || 'Waiting'}
+                      {currentSelectedRoom.bookingId.status === 'inprogress'
+                        ? 'In Progress'
+                        : currentSelectedRoom.bookingId.status}
                     </Text>
                   </View>
                 </View>
@@ -381,7 +402,7 @@ const styles = StyleSheet.create({
     marginTop: -2,
   },
   whiteSectionBlock: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: AppColors.white,
     borderRadius: 18,
     padding: responsiveWidth(4.5),
     marginBottom: responsiveHeight(2.5),
@@ -396,7 +417,7 @@ const styles = StyleSheet.create({
   blockHeadingTitle: {
     fontSize: responsiveFontSize(2.2),
     fontWeight: '700',
-    color: '#111111',
+    color: AppColors.black,
     marginBottom: responsiveHeight(2),
   },
   gridRoomsContainer: {
@@ -405,8 +426,8 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-start',
   },
   roomBox: {
-    width: '23.5%',
-    height: responsiveHeight(8),
+    width: '32%',
+    height: responsiveHeight(9.5),
     borderRadius: 10,
     padding: responsiveWidth(1.8),
     marginBottom: responsiveHeight(1.2),
@@ -418,44 +439,49 @@ const styles = StyleSheet.create({
     borderColor: '#0C4F51',
   },
   roomBoxUnselected: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: AppColors.white,
     borderWidth: 1,
     borderColor: '#E6ECEC',
   },
   roomHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    // justifyContent: 'center',
   },
   roomNoTextSelected: {
     fontWeight: '600',
-    fontSize: responsiveFontSize(1.1),
-    color: '#FFFFFF',
+    fontSize: responsiveFontSize(1.2),
+    color: AppColors.white,
     marginLeft: 3,
   },
   roomNoTextUnselected: {
-    fontSize: responsiveFontSize(1.1),
+    fontSize: responsiveFontSize(1.2),
     fontWeight: '600',
-    color: '#1A202C',
+    color: AppColors.black,
     marginLeft: 3,
   },
   activePatientName: {
-    fontSize: responsiveFontSize(1),
+    fontSize: responsiveFontSize(1.2),
     fontWeight: '600',
-    marginTop: 2,
+    // marginTop: 2,
   },
   activePatientType: {
-    fontSize: responsiveFontSize(0.9),
+    fontSize: responsiveFontSize(1.0),
   },
   activeStatusTag: {
-    fontSize: responsiveFontSize(0.8),
+    fontSize: responsiveFontSize(0.9),
     textAlign: 'right',
     opacity: 0.9,
+    textTransform: 'capitalize',
+    paddingTop: responsiveHeight(1),
+    // backgroundColor: 'red',
   },
   noAssignmentText: {
-    fontSize: responsiveFontSize(1),
+    fontSize: responsiveFontSize(1.2),
     color: '#A0AEC0',
     lineHeight: responsiveHeight(1.4),
-    marginTop: responsiveHeight(0.8),
+    marginTop: responsiveHeight(0.3),
+    textAlign: 'center',
   },
   doctorSubheading: {
     fontSize: responsiveFontSize(1.9),
@@ -484,11 +510,39 @@ const styles = StyleSheet.create({
     fontSize: responsiveFontSize(1.4),
     color: '#2D3748',
   },
+  colPatient: {
+    flex: 2.2,
+    paddingRight: responsiveWidth(2),
+  },
+  colPatientBold: {
+    flex: 2.2,
+    fontWeight: '700',
+    paddingRight: responsiveWidth(2),
+  },
+  colService: {
+    flex: 3.0,
+    paddingRight: responsiveWidth(2),
+  },
+  colRoom: {
+    flex: 0.9,
+  },
+  colWait: {
+    flex: 2.2,
+    paddingRight: responsiveWidth(2),
+  },
+  colStatus: {
+    flex: 1.6,
+    alignItems: 'flex-end',
+  },
+  colStatusText: {
+    flex: 1.6,
+    textAlign: 'right',
+  },
   waitingStatusPill: {
     backgroundColor: '#E6FFFA',
-    paddingHorizontal: responsiveWidth(1.5),
+    paddingHorizontal: responsiveWidth(1),
     paddingVertical: responsiveHeight(0.5),
-    borderRadius: 20,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: '#B2F5EA',
   },
@@ -496,6 +550,7 @@ const styles = StyleSheet.create({
     fontSize: responsiveFontSize(1),
     fontWeight: '600',
     color: '#319795',
+    textTransform: 'capitalize',
   },
   notAssignedContainer: {
     alignItems: 'center',

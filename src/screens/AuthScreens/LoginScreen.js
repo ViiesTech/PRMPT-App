@@ -54,7 +54,7 @@ const LoginScreen = ({ navigation }) => {
       setLoading(false);
       console.log('res in login:-', res);
       if (res?.success) {
-        showToast('Success', res?.message);
+        showToast('Login Successfully!', res?.message, 'success');
         dispatch(setToken(res?.token));
         dispatch(setUser(res?.data));
         dispatch(setRole(res?.data?.type));

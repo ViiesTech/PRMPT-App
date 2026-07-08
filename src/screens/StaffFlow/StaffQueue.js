@@ -1,12 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
   TouchableOpacity,
   StatusBar,
   Platform,
+  FlatList,
+  ActivityIndicator,
 } from 'react-native';
 import {
   responsiveFontSize,
@@ -15,66 +16,136 @@ import {
 } from '../../utils/Responsive_Dimensions';
 import Feather from 'react-native-vector-icons/Feather';
 import { showToast } from '../../utils/ShowToast';
-
-const initialQueueData = [
-  {
-    id: '1',
-    doctor: 'Dr. Sarah Mitchell',
-    patient: 'Andrew Ainsley',
-    service: 'Local Anesthesia',
-    room: 'Room 1',
-    wait: '3m 22s',
-    status: 'Waiting',
-    description: 'Procedure delay due to preparation',
-    provider: 'Dr. Sarah Mitchell',
-    avatarBg: '#E0E7FF',
-    avatarIconColor: '#4F46E5',
-    avatarIconName: 'tool',
-  },
-  {
-    id: '2',
-    doctor: 'Dr. Sarah Mitchell',
-    patient: 'Andrew Ainsley',
-    service: 'Post-OP',
-    room: 'Room 2',
-    wait: '3m 22s',
-    status: 'Waiting',
-    description: 'its description',
-    provider: 'Dr. Sarah Mitchell',
-    avatarBg: '#FFE4E6',
-    avatarIconColor: '#E11D48',
-    avatarIconName: 'zap',
-  },
-  {
-    id: '3',
-    doctor: 'Dr. Sarah Mitchell',
-    patient: 'Andrew Ainsley',
-    service: 'Post-OP',
-    room: 'Room 3',
-    wait: '3m 22s',
-    status: 'Waiting',
-    description: 'its description',
-    provider: 'Dr. Sarah Mitchell',
-    avatarBg: '#FEF3C7',
-    avatarIconColor: '#D97706',
-    avatarIconName: 'more-horizontal',
-  },
-];
+import {
+  useGetAllBookingsQuery,
+  useUpdateBookingStatusMutation,
+} from '../../Services/OtherServices';
+import { useFocusEffect } from '@react-navigation/native';
+import AppLoader from '../../componets/AppLoader';
+import {
+  getStatusStyles,
+  getRemainingDelayTime,
+  getElapsedTime,
+  getAvatarProps,
+} from '../../utils/Utils';
 
 const StaffQueue = ({ navigation }) => {
-  const [queueList, setQueueList] = useState(initialQueueData);
+  const [page, setPage] = useState(1);
+  const [allBookings, setAllBookings] = useState([]);
+  // eslint-disable-next-line no-unused-vars
+  const [seconds, setSeconds] = useState(0);
 
-  const handleDischarge = id => {
-    const patient = queueList.find(item => item.id === id);
-    setQueueList(prev => prev.filter(item => item.id !== id));
-    if (patient) {
+  const currentDate = new Date().toISOString().split('T')[0];
+
+  const {
+    data: bookingsResponse,
+    isLoading,
+    isFetching,
+    refetch,
+  } = useGetAllBookingsQuery({
+    date: currentDate,
+    page,
+    limit: 10,
+  });
+
+  const [updateBookingStatus] = useUpdateBookingStatusMutation();
+
+  useEffect(() => {
+    if (bookingsResponse?.data) {
+      if (page === 1) {
+        setAllBookings(bookingsResponse.data);
+      } else {
+        setAllBookings(prev => {
+          const newItems = bookingsResponse.data.filter(
+            item => !prev.some(existing => existing._id === item._id),
+          );
+          return [...prev, ...newItems];
+        });
+      }
+    }
+  }, [bookingsResponse, page]);
+
+  const hasActiveTimer = allBookings.some(
+    item =>
+      item.status === 'inprogress' ||
+      item.status === 'pending' ||
+      ((item.status === 'delayed' || item.isDelay) &&
+        item.delay &&
+        new Date(item.delay).getTime() > Date.now()),
+  );
+
+  useEffect(() => {
+    if (!hasActiveTimer) {
+      return;
+    }
+
+    const interval = setInterval(() => {
+      setSeconds(s => s + 1);
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [hasActiveTimer]);
+
+  useFocusEffect(
+    useCallback(() => {
+      setPage(1);
+      refetch();
+    }, [refetch]),
+  );
+
+  const handleDischarge = async bookingId => {
+    try {
+      const response = await updateBookingStatus({
+        bookingId,
+        status: 'completed',
+      }).unwrap();
+
+      if (response?.success) {
+        showToast(
+          'Patient Discharged',
+          'Patient has been successfully discharged.',
+          'success',
+        );
+        setAllBookings(prev => prev.filter(item => item._id !== bookingId));
+      } else {
+        showToast(
+          'API Error',
+          response?.message || 'Failed to discharge patient.',
+          'error',
+        );
+      }
+    } catch (error) {
+      console.error('Discharge Error:', error);
       showToast(
-        'success',
-        'Patient Discharged',
-        `${patient.patient} has been discharged`,
+        'API Error',
+        error?.data?.message || 'An error occurred while discharging patient.',
+        'error',
       );
     }
   };
+
+  const listEmptyComponent = () => {
+    return (
+      <View style={styles.listEmptyComponent}>
+        <Text style={styles.emptyText}>No bookings for today.</Text>
+      </View>
+    );
+  };
+
+  const renderFooter = useCallback(() => {
+    if (isFetching && page > 1) {
+      return (
+        <View style={styles.listFooterLoader}>
+          <ActivityIndicator size="small" color="#0C4F51" />
+        </View>
+      );
+    }
+    return null;
+  }, [isFetching, page]);
+
+  if (isLoading && page === 1) {
+    return <AppLoader />;
+  }
 
   return (
     <View style={styles.container}>
@@ -92,20 +163,45 @@ const StaffQueue = ({ navigation }) => {
         <View style={styles.headerTextContainer}>
           <Text style={styles.headerTitle}>Patient Queue</Text>
           <Text style={styles.headerSubtitle}>
-            {queueList.length} {queueList.length === 1 ? 'patient' : 'patients'}{' '}
-            assigned
+            {allBookings.length}{' '}
+            {allBookings.length === 1 ? 'patient' : 'patients'} assigned
           </Text>
         </View>
       </View>
 
       {/* Queue Cards List Container */}
-      <ScrollView
+      <FlatList
+        data={allBookings}
+        keyExtractor={item => item._id}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
-      >
-        {queueList.map(item => {
+        ListEmptyComponent={listEmptyComponent}
+        onEndReached={() => {
+          if (bookingsResponse?.pagination?.hasNextPage && !isFetching) {
+            setPage(prev => prev + 1);
+          }
+        }}
+        onEndReachedThreshold={0.5}
+        ListFooterComponent={renderFooter}
+        renderItem={({ item, index }) => {
+          const avatar = getAvatarProps(index);
+          const statusStyle = getStatusStyles(item.status);
+          const displayRoom = item.roomId?.roomNo
+            ? `Room ${item.roomId.roomNo}`
+            : 'No Room';
+          const serviceName =
+            item.subServiceId?.subServiceName || 'Unnamed Service';
+          const waitTime =
+            item.status === 'inprogress'
+              ? getElapsedTime(item.resDuration)
+              : item.status === 'pending'
+              ? getElapsedTime(item.date || item.createdAt)
+              : item.status === 'delayed' || item.isDelay
+              ? getRemainingDelayTime(item.delay)
+              : item.resTime || '0m';
+
           return (
-            <View key={item.id} style={styles.queueCard}>
+            <View style={styles.queueCard}>
               {/* Card Body - Left Handle & Avatar, Right Patient Info */}
               <View style={styles.cardMainBody}>
                 {/* Drag handle & avatar circle */}
@@ -113,13 +209,13 @@ const StaffQueue = ({ navigation }) => {
                   <View
                     style={[
                       styles.avatarCircle,
-                      { backgroundColor: item.avatarBg },
+                      { backgroundColor: avatar.bg },
                     ]}
                   >
                     <Feather
-                      name={item.avatarIconName}
+                      name={avatar.icon}
                       size={16}
-                      color={item.avatarIconColor}
+                      color={avatar.color}
                     />
                   </View>
                 </View>
@@ -128,67 +224,76 @@ const StaffQueue = ({ navigation }) => {
                 <View style={styles.cardMiddle}>
                   <View style={styles.patientInfoRow}>
                     <Text style={styles.patientName} numberOfLines={1}>
-                      {item.patient}
+                      {item.patientName}
                     </Text>
                     <View
                       style={[
                         styles.statusTag,
-                        item.status === 'In Progress'
-                          ? styles.statusTagInProgress
-                          : styles.statusTagWaiting,
+                        { backgroundColor: statusStyle.bg },
                       ]}
                     >
                       <Text
                         style={[
                           styles.statusTagText,
-                          item.status === 'In Progress'
-                            ? styles.statusTextInProgress
-                            : styles.statusTextWaiting,
+                          { color: statusStyle.color },
                         ]}
                       >
-                        {item.status}
+                        {statusStyle.text}
                       </Text>
                     </View>
                   </View>
 
                   {/* Second Row: Service Name & Room Tag */}
                   <View style={styles.serviceRoomRow}>
-                    <Text style={styles.serviceName}>{item.service}</Text>
+                    <Text style={styles.serviceName}>{serviceName}</Text>
                     <View style={styles.roomTag}>
-                      <Text style={styles.roomTagText}>{item.room}</Text>
+                      <Text style={styles.roomTagText}>{displayRoom}</Text>
                     </View>
                   </View>
 
-                  {item.description ? (
+                  {item.note ? (
                     <View style={styles.descriptionBox}>
-                      <Text style={styles.descriptionText}>
-                        {item.description}
-                      </Text>
+                      <Text style={styles.descriptionText}>{item.note}</Text>
                     </View>
                   ) : null}
 
-                  <Text style={styles.metaText}>
-                    {item.status === 'In Progress' ? 'In progress' : 'Waiting'}:{' '}
-                    {item.wait} · Provider: {item.provider}
-                  </Text>
+                  <View style={styles.rowContainer}>
+                    <Text style={styles.metaText}>
+                      Provider:{' '}
+                      <Text style={styles.valueText}>
+                        {item.providerId?.fullName || 'No Provider'}
+                      </Text>
+                    </Text>
+
+                    {item.status !== 'completed' && (
+                      <Text style={styles.metaText}>
+                        {item.status === 'inprogress'
+                          ? 'In progress'
+                          : 'Waiting'}
+                        : <Text style={styles.valueText}>{waitTime}</Text>
+                      </Text>
+                    )}
+                  </View>
                 </View>
               </View>
 
               {/* Action Buttons in a horizontal row at the bottom of the card */}
-              <View style={styles.buttonsRow}>
-                <TouchableOpacity
-                  style={styles.dischargeButton}
-                  activeOpacity={0.8}
-                  onPress={() => handleDischarge(item.id)}
-                >
-                  <Feather name="check" size={14} color="#EF4444" />
-                  <Text style={styles.dischargeButtonText}>Discharge</Text>
-                </TouchableOpacity>
-              </View>
+              {item.status !== 'completed' ? (
+                <View style={styles.buttonsRow}>
+                  <TouchableOpacity
+                    style={styles.dischargeButton}
+                    activeOpacity={0.8}
+                    onPress={() => handleDischarge(item._id)}
+                  >
+                    <Feather name="check" size={14} color="#EF4444" />
+                    <Text style={styles.dischargeButtonText}>Discharge</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : null}
             </View>
           );
-        })}
-      </ScrollView>
+        }}
+      />
     </View>
   );
 };
@@ -357,17 +462,28 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginLeft: responsiveWidth(1),
   },
-  statusTagInProgress: {
-    backgroundColor: '#D1FAE5',
+  listEmptyComponent: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: responsiveHeight(10),
   },
-  statusTagWaiting: {
-    backgroundColor: '#E6F4EA',
+  emptyText: {
+    fontSize: responsiveFontSize(1.6),
+    color: '#64748B',
+    fontWeight: '500',
   },
-  statusTextInProgress: {
-    color: '#065F46',
+  listFooterLoader: {
+    paddingVertical: responsiveHeight(2),
+    alignItems: 'center',
   },
-  statusTextWaiting: {
-    color: '#10B981',
+  valueText: {
+    color: '#1A202C',
+    fontWeight: '600',
+  },
+  rowContainer: {
+    flexDirection: 'row',
+    gap: responsiveWidth(2),
   },
 });
 
