@@ -4,6 +4,7 @@ export const Endpoints = {
   setPassword: `auth/password`,
   forgotPassword: `auth/forgotPassword`,
   login: `auth/signin`,
+  changePassword: `auth/password`,
 
   providerDashboard: `stats/dashboard`,
   kpiReports: `stats/kpi`,

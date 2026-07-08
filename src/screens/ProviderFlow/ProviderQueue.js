@@ -27,64 +27,12 @@ import {
   useSetBookingDelayMutation,
 } from '../../Services/OtherServices';
 import { AppColors } from '../../utils/AppColors';
-
-const statusDisplayMapping = {
-  pending: 'Waiting',
-  inprogress: 'In Progress',
-  delayed: 'Delayed',
-  completed: 'Completed',
-};
-
-const getAvatarProps = index => {
-  const props = [
-    { bg: '#E0E7FF', color: '#4F46E5', icon: 'tool' },
-    { bg: '#FFE4E6', color: '#E11D48', icon: 'zap' },
-    { bg: '#FEF3C7', color: '#D97706', icon: 'more-horizontal' },
-  ];
-  return props[index % props.length];
-};
-
-const getRemainingDelayTime = delayTimeStr => {
-  if (!delayTimeStr) return '00:00';
-  const delayTime = new Date(delayTimeStr).getTime();
-  const now = Date.now();
-  const diffMs = delayTime - now;
-  if (diffMs <= 0) return '00:00';
-
-  const diffMins = Math.floor(diffMs / 60000);
-  const diffSecs = Math.floor((diffMs % 60000) / 1000);
-
-  const paddedMins = String(diffMins).padStart(2, '0');
-  const paddedSecs = String(diffSecs).padStart(2, '0');
-
-  return `${paddedMins}:${paddedSecs}`;
-};
-
-const getElapsedTime = startTimeStr => {
-  if (!startTimeStr) return '0s';
-  const startTime = new Date(startTimeStr).getTime();
-  const now = Date.now();
-  const diffMs = now - startTime;
-  if (diffMs <= 0) return '0s';
-
-  const diffSecs = Math.floor(diffMs / 1000);
-  const secs = diffSecs % 60;
-  const diffMins = Math.floor(diffSecs / 60);
-  const mins = diffMins % 60;
-  const diffHours = Math.floor(diffMins / 60);
-  const hours = diffHours;
-
-  let timeString = '';
-  if (hours > 0) {
-    timeString += `${hours}h `;
-  }
-  if (mins > 0 || hours > 0) {
-    timeString += `${mins}m `;
-  }
-  timeString += `${secs}s`;
-
-  return timeString;
-};
+import {
+  getStatusStyles,
+  getRemainingDelayTime,
+  getElapsedTime,
+  getAvatarProps,
+} from '../../utils/Utils';
 
 const ProviderQueue = ({ navigation }) => {
   const [delayModalVisible, setDelayModalVisible] = useState(false);
@@ -95,7 +43,6 @@ const ProviderQueue = ({ navigation }) => {
   const [seconds, setSeconds] = useState(0);
 
   const userData = useSelector(selectUser);
-  // eslint-disable-next-line no-unused-vars
   const currentDate = new Date().toISOString().split('T')[0];
 
   const {
@@ -143,6 +90,7 @@ const ProviderQueue = ({ navigation }) => {
   const hasActiveTimer = queueList.some(
     item =>
       item.status === 'inprogress' ||
+      item.status === 'pending' ||
       ((item.status === 'delayed' || item.isDelay) &&
         item.delay &&
         new Date(item.delay).getTime() > Date.now()),
@@ -276,8 +224,7 @@ const ProviderQueue = ({ navigation }) => {
           const isWaiting =
             item.status === 'pending' || item.status === 'delayed';
           const avatar = getAvatarProps(index);
-          const displayStatus =
-            statusDisplayMapping[item.status] || item.status;
+          const statusStyle = getStatusStyles(item.status);
           const displayRoom = item.roomId?.roomNo
             ? `Room ${item.roomId.roomNo}`
             : 'No Room';
@@ -314,24 +261,16 @@ const ProviderQueue = ({ navigation }) => {
                     <View
                       style={[
                         styles.statusTag,
-                        item.status === 'inprogress'
-                          ? styles.statusTagInProgress
-                          : item.status === 'delayed'
-                          ? styles.statusTagDelayed
-                          : styles.statusTagWaiting,
+                        { backgroundColor: statusStyle.bg },
                       ]}
                     >
                       <Text
                         style={[
                           styles.statusTagText,
-                          item.status === 'inprogress'
-                            ? styles.statusTextInProgress
-                            : item.status === 'delayed'
-                            ? styles.statusTextDelayed
-                            : styles.statusTextWaiting,
+                          { color: statusStyle.color },
                         ]}
                       >
-                        {displayStatus}
+                        {statusStyle.text}
                       </Text>
                     </View>
                   </View>
@@ -352,17 +291,23 @@ const ProviderQueue = ({ navigation }) => {
                       </Text>
                     </Text>
 
-                    <Text style={styles.metaText}>
-                      {item.status === 'inprogress' ? 'In progress' : 'Waiting'}
-                      :{' '}
-                      <Text style={styles.counterText}>
+                    {item.status !== 'completed' && (
+                      <Text style={styles.metaText}>
                         {item.status === 'inprogress'
-                          ? getElapsedTime(item.resDuration)
-                          : item.status === 'delayed' || item.isDelay
-                          ? getRemainingDelayTime(item.delay)
-                          : item.resTime || '0m'}
+                          ? 'In progress'
+                          : 'Waiting'}
+                        :{' '}
+                        <Text style={styles.counterText}>
+                          {item.status === 'inprogress'
+                            ? getElapsedTime(item.resDuration)
+                            : item.status === 'pending'
+                            ? getElapsedTime(item.date || item.createdAt)
+                            : item.status === 'delayed' || item.isDelay
+                            ? getRemainingDelayTime(item.delay)
+                            : item.resTime || '0m'}
+                        </Text>
                       </Text>
-                    </Text>
+                    )}
                   </View>
 
                   {item?.note ? (

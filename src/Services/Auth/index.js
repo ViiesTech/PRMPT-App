@@ -41,6 +41,14 @@ const login = body => {
   };
 };
 
+const changePassword = body => {
+  return {
+    url: Endpoints.changePassword,
+    method: apiMethods.post,
+    body,
+  };
+};
+
 export const AuthService = baseApi.injectEndpoints({
   endpoints: build => ({
     verifyAccount: build.mutation({ query: verifyAccount }),
@@ -48,6 +56,7 @@ export const AuthService = baseApi.injectEndpoints({
     setPassword: build.mutation({ query: setPassword }),
     forgotPassword: build.mutation({ query: forgotPassword }),
     login: build.mutation({ query: login }),
+    changePassword: build.mutation({ query: changePassword }),
   }),
   overrideExisting: true,
 });
@@ -58,4 +67,5 @@ export const {
   useSetPasswordMutation,
   useForgotPasswordMutation,
   useLoginMutation,
+  useChangePasswordMutation,
 } = AuthService;

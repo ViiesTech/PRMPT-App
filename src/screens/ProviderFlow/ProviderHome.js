@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -22,6 +22,11 @@ import { useSelector } from 'react-redux';
 import { useProviderDashboardQuery } from '../../Services/OtherServices';
 import { useFocusEffect } from '@react-navigation/native';
 import AppLoader from '../../componets/AppLoader';
+import {
+  getStatusStyles,
+  getRemainingDelayTime,
+  getElapsedTime,
+} from '../../utils/Utils';
 
 const ProviderHome = ({ navigation }) => {
   const [selectedRoomId, setSelectedRoomId] = useState(1);
@@ -38,10 +43,45 @@ const ProviderHome = ({ navigation }) => {
     }, [refetch]),
   );
 
+  // eslint-disable-next-line no-unused-vars
+  const [seconds, setSeconds] = useState(0);
+
   const responseData = dashboardData?.data;
   const bookingsCounts = responseData?.bookings?.counts;
   const roomsList = responseData?.rooms || [];
   const currentSelectedRoom = roomsList.find(r => r.roomNo === selectedRoomId);
+  const activeBooking = currentSelectedRoom?.bookingId;
+
+  const hasActiveTimer = !!(
+    activeBooking &&
+    (activeBooking.status === 'inprogress' ||
+      activeBooking.status === 'pending' ||
+      ((activeBooking.status === 'delayed' || activeBooking.isDelay) &&
+        activeBooking.delay &&
+        new Date(activeBooking.delay).getTime() > Date.now()))
+  );
+
+  useEffect(() => {
+    if (!hasActiveTimer) {
+      return;
+    }
+
+    const interval = setInterval(() => {
+      setSeconds(s => s + 1);
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [hasActiveTimer]);
+
+  const waitTime = activeBooking
+    ? activeBooking.status === 'inprogress'
+      ? getElapsedTime(activeBooking.resDuration)
+      : activeBooking.status === 'pending'
+      ? getElapsedTime(activeBooking.date || activeBooking.createdAt)
+      : activeBooking.status === 'delayed' || activeBooking.isDelay
+      ? getRemainingDelayTime(activeBooking.delay)
+      : activeBooking.resTime || '0m'
+    : '0m';
 
   if (isLoading && !responseData) {
     return <AppLoader />;
@@ -282,16 +322,32 @@ const ProviderHome = ({ navigation }) => {
                   style={[styles.tableBodyText, styles.colWait]}
                   numberOfLines={1}
                 >
-                  {currentSelectedRoom.bookingId.resTime || '0m'}
+                  {waitTime}
                 </Text>
                 <View style={styles.colStatus}>
-                  <View style={styles.waitingStatusPill}>
-                    <Text style={styles.waitingPillText}>
-                      {currentSelectedRoom.bookingId.status === 'inprogress'
-                        ? 'In Progress'
-                        : currentSelectedRoom.bookingId.status}
-                    </Text>
-                  </View>
+                  {(() => {
+                    const statusStyle = getStatusStyles(activeBooking.status);
+                    return (
+                      <View
+                        style={[
+                          styles.waitingStatusPill,
+                          {
+                            backgroundColor: statusStyle.bg,
+                            borderColor: statusStyle.bg,
+                          },
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.waitingPillText,
+                            { color: statusStyle.color },
+                          ]}
+                        >
+                          {statusStyle.text}
+                        </Text>
+                      </View>
+                    );
+                  })()}
                 </View>
               </View>
             </View>

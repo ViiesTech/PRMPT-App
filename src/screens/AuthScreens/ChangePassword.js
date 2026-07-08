@@ -19,6 +19,7 @@ import {
 import Feather from 'react-native-vector-icons/Feather';
 import AppButton from '../../componets/AppButton';
 import { showToast } from '../../utils/ShowToast';
+import { useChangePasswordMutation } from '../../Services/Auth';
 
 const ChangePassword = ({ navigation }) => {
   const [currentPassword, setCurrentPassword] = useState('');
@@ -28,8 +29,9 @@ const ChangePassword = ({ navigation }) => {
   const [secureCurrent, setSecureCurrent] = useState(true);
   const [secureNew, setSecureNew] = useState(true);
   const [secureConfirm, setSecureConfirm] = useState(true);
+  const [changePassword, { isLoading }] = useChangePasswordMutation();
 
-  const handleChangePassword = () => {
+  const handleChangePassword = async () => {
     if (!currentPassword.trim()) {
       showToast(
         'Validation Error',
@@ -53,8 +55,35 @@ const ChangePassword = ({ navigation }) => {
       return;
     }
 
-    showToast('Validation Error', 'Password changed successfully!', 'success');
-    navigation.goBack();
+    try {
+      const response = await changePassword({
+        type: 'change',
+        currentPassword,
+        newPassword,
+      }).unwrap();
+
+      if (response?.success) {
+        showToast(
+          'Success',
+          response?.message || 'Password changed successfully!',
+          'success',
+        );
+        navigation.goBack();
+      } else {
+        showToast(
+          'API Error',
+          response?.message || 'Failed to change password.',
+          'error',
+        );
+      }
+    } catch (error) {
+      console.error('Change Password Error:', error);
+      showToast(
+        'API Error',
+        error?.data?.message || 'An error occurred while changing password.',
+        'error',
+      );
+    }
   };
 
   return (
@@ -175,6 +204,7 @@ const ChangePassword = ({ navigation }) => {
               gradient={true}
               variant="primary"
               onPress={handleChangePassword}
+              loading={isLoading}
             />
           </View>
         </ScrollView>
