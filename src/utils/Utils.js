@@ -77,3 +77,19 @@ export const getAvatarProps = index => {
   ];
   return props[index % props.length];
 };
+
+export const formatTime = dateStr => {
+  if (!dateStr) return '';
+  try {
+    const date = new Date(dateStr);
+    return date
+      .toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true,
+      })
+      .toLowerCase();
+  } catch {
+    return '';
+  }
+};

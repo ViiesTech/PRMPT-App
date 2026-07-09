@@ -15,4 +15,9 @@ export const Endpoints = {
   getAllRooms: `room/getAllRooms`,
   getAllProfiles: `profile/getAllProfiles`,
   createBooking: `booking/createBooking`,
+
+  getChats: `chat/getChat`,
+  getMessages: `chat/getMessages`,
+  createChat: `chat/getOrCreateChat`,
+  sendMessage: `chat/sendMessage`,
 };

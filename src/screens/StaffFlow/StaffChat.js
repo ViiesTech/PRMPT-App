@@ -1,4 +1,10 @@
-import React, { useState } from 'react';
+import React, {
+  useState,
+  useEffect,
+  useMemo,
+  useCallback,
+  useRef,
+} from 'react';
 import {
   View,
   Text,
@@ -17,43 +23,175 @@ import {
 } from '../../utils/Responsive_Dimensions';
 import Feather from 'react-native-vector-icons/Feather';
 import { AppColors } from '../../utils/AppColors';
-
-const initialMessages = [
-  {
-    id: '1',
-    text: 'Let me know when reached',
-    sender: 'other',
-    time: '9:42 am',
-  },
-  {
-    id: '2',
-    text: "I'm here",
-    sender: 'me',
-    time: '9:42 am',
-  },
-];
+import { useSelector, useDispatch } from 'react-redux';
+import { selectUser } from '../../redux/Slices';
+import { setMessages, selectMessages } from '../../redux/ChatSlices';
+import {
+  useGetMessagesQuery,
+  useCreateChatMutation,
+  useSendMessageMutation,
+} from '../../Services/ChatServices';
+import { formatTime } from '../../utils/Utils';
+import { getSocket } from '../../utils/Socket';
 
 const StaffChat = ({ navigation, route }) => {
   const contactName = route?.params?.name || 'Lauralee Quintero';
-  const [messagesList, setMessagesList] = useState(initialMessages);
-  const [inputText, setInputText] = useState('Hello where');
+  const [chatId, setChatId] = useState(route?.params?.chatId);
+  const [inputText, setInputText] = useState('');
+  const [isTyping, setIsTyping] = useState(false);
+  const userData = useSelector(selectUser);
 
-  const handleSend = () => {
-    if (!inputText.trim()) return;
-    const newMsg = {
-      id: String(messagesList.length + 1),
-      text: inputText.trim(),
-      sender: 'me',
-      time: new Date()
-        .toLocaleTimeString([], {
-          hour: '2-digit',
-          minute: '2-digit',
-          hour12: true,
-        })
-        .toLowerCase(),
+  const typingTimeoutRef = useRef(null);
+  const [createChat] = useCreateChatMutation();
+  const [sendMessageMutation] = useSendMessageMutation();
+  const messages = useSelector(selectMessages);
+  const dispatch = useDispatch();
+
+  const handleCreateChat = useCallback(async () => {
+    await createChat({ recipientId: route.params.receiverId })
+      .unwrap()
+      .then(res => {
+        if (res.success && res.chat?._id) {
+          setChatId(res.chat._id);
+        }
+      })
+      .catch(err => {
+        console.log('Error creating/fetching chat:', err);
+      });
+  }, [createChat, route?.params?.receiverId]);
+
+  // If chatId is not passed (e.g. from starting a new chat), create or fetch it
+  useEffect(() => {
+    if (!chatId && route?.params?.receiverId) {
+      handleCreateChat();
+    }
+  }, [chatId, route?.params?.receiverId, handleCreateChat]);
+
+  // Fetch messages with a 3-second polling interval for simple real-time updates
+  const { data: messagesResponse, refetch } = useGetMessagesQuery(
+    { chatId },
+    {
+      skip: !chatId,
+      refetchOnMountOrArgChange: true,
+      pollingInterval: 3000,
+    },
+  );
+
+  // Clear messages on mount/chatId change, and store fetched messages in Redux
+  useEffect(() => {
+    dispatch(setMessages(null));
+  }, [chatId, dispatch]);
+
+  useEffect(() => {
+    if (messagesResponse) {
+      dispatch(setMessages(messagesResponse));
+    }
+  }, [messagesResponse, dispatch]);
+
+  // Handle socket connections for realTime message sync and typing events
+  useEffect(() => {
+    const socket = getSocket();
+    if (socket && chatId) {
+      socket.emit('joinRoom', { roomId: chatId });
+      console.log('[Socket] Joined room:', chatId);
+
+      const handleNewMessage = () => {
+        refetch();
+      };
+
+      const handleReconnect = () => {
+        socket.emit('joinRoom', { roomId: chatId });
+      };
+
+      const onTyping = data => {
+        console.log('[Socket] typing event data:', data);
+        const senderId =
+          data?.senderId?._id || data?.senderId || data?.userId || null;
+        // Show typing indicator if the sender is not the current user
+        if (!senderId || String(senderId) !== String(userData?._id)) {
+          setIsTyping(true);
+        }
+      };
+
+      const onStopTyping = data => {
+        console.log('[Socket] stopTyping event data:', data);
+        const senderId =
+          data?.senderId?._id || data?.senderId || data?.userId || null;
+        if (!senderId || String(senderId) !== String(userData?._id)) {
+          setIsTyping(false);
+        }
+      };
+
+      socket.on('newMessage', handleNewMessage);
+      socket.on('message', handleNewMessage);
+      socket.on('typing', onTyping);
+      socket.on('stopTyping', onStopTyping);
+      socket.on('reconnect', handleReconnect);
+
+      return () => {
+        socket.off('newMessage', handleNewMessage);
+        socket.off('message', handleNewMessage);
+        socket.off('typing', onTyping);
+        socket.off('stopTyping', onStopTyping);
+        socket.off('reconnect', handleReconnect);
+        setIsTyping(false);
+      };
+    }
+  }, [chatId, refetch, userData?._id]);
+
+  useEffect(() => {
+    return () => {
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
     };
-    setMessagesList([...messagesList, newMsg]);
+  }, []);
+
+  const handleInputChange = text => {
+    setInputText(text);
+    const socket = getSocket();
+    if (socket && chatId) {
+      socket.emit('typing', { chatId, senderId: userData?._id });
+
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+      typingTimeoutRef.current = setTimeout(() => {
+        socket.emit('stopTyping', { chatId, senderId: userData?._id });
+      }, 2000);
+    }
+  };
+
+  const formattedMessages = useMemo(() => {
+    const rawMessages = messages || [];
+    return rawMessages.map(msg => ({
+      id: msg._id,
+      text: msg.message || '',
+      sender: msg.senderId?._id === userData?._id ? 'me' : 'other',
+      time: formatTime(msg.createdAt),
+    }));
+  }, [messages, userData]);
+
+  const handleSend = async () => {
+    if (!inputText.trim() || !chatId) return;
+    const text = inputText.trim();
     setInputText('');
+
+    const socket = getSocket();
+    if (socket && chatId) {
+      socket.emit('stopTyping', { chatId, senderId: userData?._id });
+    }
+
+    try {
+      const formData = new FormData();
+      formData.append('chatId', chatId);
+      formData.append('message', text);
+
+      await sendMessageMutation(formData).unwrap();
+      refetch();
+    } catch (err) {
+      console.log('Error sending message:', err);
+    }
   };
 
   const renderMessage = ({ item }) => {
@@ -71,6 +209,9 @@ const StaffChat = ({ navigation, route }) => {
     );
   };
 
+  // console.log('contactName:-', contactName);
+  // console.log('isTyping:-', isTyping);
+
   return (
     <View style={styles.container}>
       <StatusBar backgroundColor="#FFFFFF" barStyle="dark-content" />
@@ -84,12 +225,19 @@ const StaffChat = ({ navigation, route }) => {
         >
           <Feather name="arrow-left" size={26} color="#0C4F51" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>{contactName}</Text>
+        <View style={styles.headerTextContainer}>
+          <Text style={styles.headerTitle} numberOfLines={1}>
+            {contactName}
+          </Text>
+          {isTyping && (
+            <Text style={styles.typingIndicatorText}>typing...</Text>
+          )}
+        </View>
       </View>
 
       {/* Chat Messages List */}
       <FlatList
-        data={messagesList}
+        data={formattedMessages}
         renderItem={renderMessage}
         keyExtractor={item => item.id}
         contentContainerStyle={styles.messagesList}
@@ -97,9 +245,9 @@ const StaffChat = ({ navigation, route }) => {
       />
 
       {/* Quick Replies Button */}
-      <TouchableOpacity style={styles.quickRepliesBtn} activeOpacity={0.8}>
+      {/* <TouchableOpacity style={styles.quickRepliesBtn} activeOpacity={0.8}>
         <Feather name="more-horizontal" size={24} color="#FFFFFF" />
-      </TouchableOpacity>
+      </TouchableOpacity> */}
 
       {/* Keyboard/Input Bar */}
       <KeyboardAvoidingView
@@ -112,7 +260,7 @@ const StaffChat = ({ navigation, route }) => {
               placeholder="Type a message..."
               placeholderTextColor="#A0AEC0"
               value={inputText}
-              onChangeText={setInputText}
+              onChangeText={handleInputChange}
               multiline={true}
             />
             <TouchableOpacity style={styles.clipButton} activeOpacity={0.7}>
@@ -153,11 +301,21 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  headerTextContainer: {
+    flex: 1,
+  },
   headerTitle: {
-    fontSize: responsiveFontSize(2.5),
+    fontSize: responsiveFontSize(2.2),
     fontWeight: '700',
     color: '#0C4F51',
     letterSpacing: 0.2,
+    textTransform: 'capitalize',
+  },
+  typingIndicatorText: {
+    fontSize: responsiveFontSize(1.3),
+    color: '#10B981',
+    fontWeight: '500',
+    marginTop: 2,
   },
   messagesList: {
     paddingHorizontal: responsiveWidth(5),
@@ -165,7 +323,6 @@ const styles = StyleSheet.create({
   },
   messageBubble: {
     maxWidth: '75%',
-    borderRadius: 12,
     paddingHorizontal: responsiveWidth(4),
     paddingVertical: responsiveHeight(1.2),
     marginBottom: responsiveHeight(1.8),
@@ -173,10 +330,16 @@ const styles = StyleSheet.create({
   myMessage: {
     alignSelf: 'flex-end',
     backgroundColor: AppColors.primary,
+    borderTopLeftRadius: 12,
+    borderBottomLeftRadius: 12,
+    borderBottomRightRadius: 12,
   },
   otherMessage: {
     alignSelf: 'flex-start',
     backgroundColor: AppColors.secondary,
+    borderTopRightRadius: 12,
+    borderBottomRightRadius: 12,
+    borderTopLeftRadius: 12,
   },
   messageText: {
     fontSize: responsiveFontSize(1.55),

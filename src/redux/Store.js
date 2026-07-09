@@ -2,6 +2,7 @@ import { configureStore } from '@reduxjs/toolkit';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { persistReducer, persistStore } from 'redux-persist';
 import authReducer from './Slices';
+import chatReducer from './ChatSlices';
 import { baseApi } from '../Services/api';
 
 // Define persist config
@@ -13,6 +14,7 @@ const persistConfig = {
 // Apply persistence to reducers
 const rootReducer = {
   auth: persistReducer(persistConfig, authReducer),
+  chat: persistReducer(persistConfig, chatReducer),
   [baseApi.reducerPath]: baseApi.reducer,
 };
 
