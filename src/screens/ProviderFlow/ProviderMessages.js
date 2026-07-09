@@ -23,6 +23,7 @@ import { setInboxList, selectInboxList } from '../../redux/ChatSlices';
 import { useGetAllProfilesQuery } from '../../Services/OtherServices';
 import { useGetChatsQuery } from '../../Services/ChatServices';
 import { getSocket } from '../../utils/Socket';
+import { formatTime } from '../../utils/Utils';
 
 const ProviderMessages = ({ navigation }) => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -68,33 +69,21 @@ const ProviderMessages = ({ navigation }) => {
 
   useFocusEffect(
     useCallback(() => {
+      setSearchQuery('');
+      setDebouncedQuery('');
       refetch();
     }, [refetch]),
   );
 
-  const { data: profilesResponse } = useGetAllProfilesQuery({
-    type: 'staff',
-  });
-  const profilesList = useMemo(
-    () => profilesResponse?.data || [],
-    [profilesResponse],
-  );
+  const { data: profilesResponse } = useGetAllProfilesQuery();
 
-  const formatTime = useCallback(dateStr => {
-    if (!dateStr) return '';
-    try {
-      const date = new Date(dateStr);
-      return date
-        .toLocaleTimeString([], {
-          hour: '2-digit',
-          minute: '2-digit',
-          hour12: true,
-        })
-        .toLowerCase();
-    } catch {
-      return '';
-    }
-  }, []);
+  const profilesList = useMemo(() => {
+    const providers = profilesResponse?.data?.providers || [];
+    const staff = profilesResponse?.data?.staff || [];
+    const admins = profilesResponse?.data?.admins || [];
+    const combined = [...providers, ...staff, ...admins];
+    return combined.filter(profile => profile._id !== userData?._id);
+  }, [profilesResponse, userData?._id]);
 
   // Formatted chats from the getChats endpoint
   const formattedChats = useMemo(() => {
@@ -117,7 +106,7 @@ const ProviderMessages = ({ navigation }) => {
         participantId: otherParticipant?._id,
       };
     });
-  }, [inboxList, userData, formatTime]);
+  }, [inboxList, userData]);
 
   // Filter existing chats matching the query
   const matchedConversations = useMemo(() => {
@@ -149,6 +138,7 @@ const ProviderMessages = ({ navigation }) => {
     matchedProfiles.length === 0 &&
     debouncedQuery.trim() !== '';
 
+  // console.log('profilesList:-', profilesList);
   return (
     <View style={styles.container}>
       <StatusBar backgroundColor="#F5F7FA" barStyle="dark-content" />

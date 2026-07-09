@@ -15,6 +15,7 @@ export const Endpoints = {
   getAllRooms: `room/getAllRooms`,
   getAllProfiles: `profile/getAllProfiles`,
   createBooking: `booking/createBooking`,
+  updateProfile: `profile/updateProfile`,
 
   getChats: `chat/getChat`,
   getMessages: `chat/getMessages`,

@@ -18,6 +18,7 @@ import ProviderMessages from '../screens/ProviderFlow/ProviderMessages';
 import ProviderProfile from '../screens/ProviderFlow/ProviderProfile';
 import ProviderChat from '../screens/ProviderFlow/ProviderChat';
 import ChangePassword from '../screens/AuthScreens/ChangePassword';
+import ProviderEditProfile from '../screens/ProviderFlow/ProviderEditProfile';
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
@@ -124,6 +125,7 @@ const ProviderStack = () => {
       <Stack.Screen name="ProviderBottomTabs" component={ProviderBottomTabs} />
       <Stack.Screen name="ProviderChat" component={ProviderChat} />
       <Stack.Screen name="ChangePassword" component={ChangePassword} />
+      <Stack.Screen name="ProviderEditProfile" component={ProviderEditProfile} />
     </Stack.Navigator>
   );
 };

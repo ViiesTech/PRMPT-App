@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import React, {
+  useState,
+  useEffect,
+  useMemo,
+  useCallback,
+  useRef,
+} from 'react';
 import {
   View,
   Text,
@@ -9,6 +15,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   StatusBar,
+  ActivityIndicator,
 } from 'react-native';
 import {
   responsiveFontSize,
@@ -37,7 +44,7 @@ const ProviderChat = ({ navigation, route }) => {
 
   const typingTimeoutRef = useRef(null);
   const [createChat] = useCreateChatMutation();
-  const [sendMessageMutation] = useSendMessageMutation();
+  const [sendMessageMutation, { isLoading: isSending }] = useSendMessageMutation();
   const messages = useSelector(selectMessages);
   const dispatch = useDispatch();
 
@@ -236,9 +243,9 @@ const ProviderChat = ({ navigation, route }) => {
       />
 
       {/* Quick Replies Button */}
-      <TouchableOpacity style={styles.quickRepliesBtn} activeOpacity={0.8}>
+      {/* <TouchableOpacity style={styles.quickRepliesBtn} activeOpacity={0.8}>
         <Feather name="more-horizontal" size={24} color="#FFFFFF" />
-      </TouchableOpacity>
+      </TouchableOpacity> */}
 
       {/* Keyboard/Input Bar */}
       <KeyboardAvoidingView
@@ -262,8 +269,13 @@ const ProviderChat = ({ navigation, route }) => {
             style={styles.sendButton}
             activeOpacity={0.7}
             onPress={handleSend}
+            disabled={isSending}
           >
-            <Feather name="send" size={24} color="#FFFFFF" />
+            {isSending ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <Feather name="send" size={24} color="#FFFFFF" />
+            )}
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>

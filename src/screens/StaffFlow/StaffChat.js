@@ -15,6 +15,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   StatusBar,
+  ActivityIndicator,
 } from 'react-native';
 import {
   responsiveFontSize,
@@ -43,7 +44,7 @@ const StaffChat = ({ navigation, route }) => {
 
   const typingTimeoutRef = useRef(null);
   const [createChat] = useCreateChatMutation();
-  const [sendMessageMutation] = useSendMessageMutation();
+  const [sendMessageMutation, { isLoading: isSending }] = useSendMessageMutation();
   const messages = useSelector(selectMessages);
   const dispatch = useDispatch();
 
@@ -271,8 +272,13 @@ const StaffChat = ({ navigation, route }) => {
             style={styles.sendButton}
             activeOpacity={0.7}
             onPress={handleSend}
+            disabled={isSending}
           >
-            <Feather name="send" size={24} color="#FFFFFF" />
+            {isSending ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <Feather name="send" size={24} color="#FFFFFF" />
+            )}
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>

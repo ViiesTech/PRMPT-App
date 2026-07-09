@@ -63,11 +63,11 @@ const getAllRooms = ({ available }) => {
   };
 };
 
-const getAllProfiles = ({ type }) => {
+const getAllProfiles = (params = {}) => {
   return {
     url: Endpoints.getAllProfiles,
     method: apiMethods.get,
-    params: { type },
+    params,
   };
 };
 
@@ -75,6 +75,14 @@ const createBooking = body => {
   return {
     url: Endpoints.createBooking,
     method: apiMethods.post,
+    body,
+  };
+};
+
+const updateProfile = body => {
+  return {
+    url: Endpoints.updateProfile,
+    method: apiMethods.patch,
     body,
   };
 };
@@ -90,6 +98,7 @@ export const OtherServices = baseApi.injectEndpoints({
     getAllRooms: build.query({ query: getAllRooms }),
     getAllProfiles: build.query({ query: getAllProfiles }),
     createBooking: build.mutation({ query: createBooking }),
+    updateProfile: build.mutation({ query: updateProfile }),
   }),
   overrideExisting: true,
 });
@@ -110,4 +119,5 @@ export const {
   useGetAllProfilesQuery,
   useLazyGetAllProfilesQuery,
   useCreateBookingMutation,
+  useUpdateProfileMutation,
 } = OtherServices;

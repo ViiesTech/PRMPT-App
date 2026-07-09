@@ -17,6 +17,7 @@ import {
 import Feather from 'react-native-vector-icons/Feather';
 import { useDispatch, useSelector } from 'react-redux';
 import { selectUser, setClearStore } from '../../redux/Slices';
+import api from '../../Constants/Api.constants';
 
 const ProviderProfile = ({ navigation }) => {
   const dispatch = useDispatch();
@@ -63,11 +64,17 @@ const ProviderProfile = ({ navigation }) => {
           <View style={styles.avatarWrapper}>
             <Image
               source={{
-                uri: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=250&h=250&fit=crop',
+                uri: user?.profile
+                  ? `${api.imageUrl}${user?.profile}`
+                  : 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=250&h=250&fit=crop',
               }}
               style={styles.avatarImage}
             />
-            <TouchableOpacity style={styles.editButton} activeOpacity={0.8}>
+            <TouchableOpacity
+              style={styles.editButton}
+              activeOpacity={0.8}
+              onPress={() => navigation.navigate('ProviderEditProfile')}
+            >
               <Feather name="edit-2" size={13} color="#FFFFFF" />
             </TouchableOpacity>
           </View>
@@ -82,6 +89,24 @@ const ProviderProfile = ({ navigation }) => {
 
         {/* Profile Options List */}
         <View style={styles.menuContainer}>
+          {/* Edit Profile */}
+          <TouchableOpacity
+            style={styles.menuRow}
+            activeOpacity={0.7}
+            onPress={() => navigation.navigate('ProviderEditProfile')}
+          >
+            <View style={styles.menuRowLeft}>
+              <Feather
+                name="user"
+                size={22}
+                color="#1F2937"
+                style={styles.menuRowIcon}
+              />
+              <Text style={styles.menuRowLabel}>Edit Profile</Text>
+            </View>
+            <Feather name="chevron-right" size={20} color="#9CA3AF" />
+          </TouchableOpacity>
+
           {/* Change Password */}
           <TouchableOpacity
             style={styles.menuRow}
@@ -164,6 +189,8 @@ const styles = StyleSheet.create({
     width: 130,
     height: 130,
     borderRadius: 65,
+    backgroundColor: '#ccc',
+    resizeMode: 'cover',
   },
   editButton: {
     position: 'absolute',

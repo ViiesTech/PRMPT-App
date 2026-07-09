@@ -19,6 +19,7 @@ import StaffProfile from '../screens/StaffFlow/StaffProfile';
 
 import StaffChat from '../screens/StaffFlow/StaffChat';
 import ChangePassword from '../screens/AuthScreens/ChangePassword';
+import StaffEditProfile from '../screens/StaffFlow/StaffEditProfile';
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
@@ -120,6 +121,7 @@ const StaffStack = () => {
       <Stack.Screen name="StaffBottomTabs" component={StaffBottomTabs} />
       <Stack.Screen name="StaffChat" component={StaffChat} />
       <Stack.Screen name="ChangePassword" component={ChangePassword} />
+      <Stack.Screen name="StaffEditProfile" component={StaffEditProfile} />
     </Stack.Navigator>
   );
 };

@@ -23,6 +23,7 @@ import { setInboxList, selectInboxList } from '../../redux/ChatSlices';
 import { useGetAllProfilesQuery } from '../../Services/OtherServices';
 import { useGetChatsQuery } from '../../Services/ChatServices';
 import { getSocket } from '../../utils/Socket';
+import { formatTime } from '../../utils/Utils';
 
 const StaffMessages = ({ navigation }) => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -68,33 +69,21 @@ const StaffMessages = ({ navigation }) => {
 
   useFocusEffect(
     useCallback(() => {
+      setSearchQuery('');
+      setDebouncedQuery('');
       refetch();
     }, [refetch]),
   );
 
-  const { data: profilesResponse } = useGetAllProfilesQuery({
-    type: 'provider',
-  });
-  const profilesList = useMemo(
-    () => profilesResponse?.data || [],
-    [profilesResponse],
-  );
+  const { data: profilesResponse } = useGetAllProfilesQuery();
 
-  const formatTime = useCallback(dateStr => {
-    if (!dateStr) return '';
-    try {
-      const date = new Date(dateStr);
-      return date
-        .toLocaleTimeString([], {
-          hour: '2-digit',
-          minute: '2-digit',
-          hour12: true,
-        })
-        .toLowerCase();
-    } catch {
-      return '';
-    }
-  }, []);
+  const profilesList = useMemo(() => {
+    const providers = profilesResponse?.data?.providers || [];
+    const staff = profilesResponse?.data?.staff || [];
+    const admins = profilesResponse?.data?.admins || [];
+    const combined = [...providers, ...staff, ...admins];
+    return combined.filter(profile => profile._id !== userData?._id);
+  }, [profilesResponse, userData?._id]);
 
   // Formatted chats from the getChats endpoint
   const formattedChats = useMemo(() => {
@@ -117,7 +106,7 @@ const StaffMessages = ({ navigation }) => {
         participantId: otherParticipant?._id,
       };
     });
-  }, [inboxList, userData, formatTime]);
+  }, [inboxList, userData]);
 
   // Filter existing chats matching the query
   const matchedConversations = useMemo(() => {
