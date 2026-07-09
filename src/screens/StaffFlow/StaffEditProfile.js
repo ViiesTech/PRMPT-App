@@ -286,6 +286,7 @@ const styles = StyleSheet.create({
     color: '#1F2937',
     paddingHorizontal: responsiveWidth(3),
     height: '100%',
+    textTransform: 'capitalize',
   },
   btnWrapper: {
     marginTop: responsiveHeight(4),

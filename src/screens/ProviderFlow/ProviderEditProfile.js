@@ -35,7 +35,7 @@ const ProviderEditProfile = ({ navigation }) => {
 
   const handlePickImage = () => {
     launchImageLibrary(
-      { mediaType: 'photo', quality: 0.8, selectionLimit: 1 },
+      { mediaType: 'photo', quality: 0.5, selectionLimit: 1 },
       response => {
         if (
           !response.didCancel &&
@@ -246,6 +246,8 @@ const styles = StyleSheet.create({
     width: 120,
     height: 120,
     borderRadius: 60,
+    backgroundColor: '#ccc',
+    resizeMode: 'cover',
   },
   editButton: {
     position: 'absolute',
@@ -285,6 +287,7 @@ const styles = StyleSheet.create({
     color: '#1F2937',
     paddingHorizontal: responsiveWidth(3),
     height: '100%',
+    textTransform: 'capitalize',
   },
   btnWrapper: {
     marginTop: responsiveHeight(4),
